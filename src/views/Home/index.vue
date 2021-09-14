@@ -44,7 +44,8 @@
     <el-form-item>
       <el-button type="primary" @click="submitForm">开始</el-button>
       <el-button @click="resetForm">重置配置</el-button>
-      <el-button @click="getTokenPrice">实时价格</el-button>
+      <el-button @click="loopTokenPrice" :loading="status.loopPriceLoading">当前 token 实时价格</el-button>
+      <el-button @click="updateWBNBPrice" :loading="status.updateWBNBLoading">更新WBNB价格</el-button>
     </el-form-item>
   </el-form>
 </template>
@@ -52,9 +53,13 @@
 <script setup lang="ts">
 import { usePair } from '@/hooks/usePairs'
 import { reactive, ref } from '@vue/reactivity'
-import { Fetcher } from '@pancakeswap/sdk'
+import { ChainId, Fetcher, Price, Route, Token, WETH } from '@pancakeswap/sdk'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
-
+import { utils } from 'ethers'
+import { useRef } from '@/hooks/useRef'
+import { USDT_TOKEN } from '@/constants/tokens'
+import { log } from 'console'
+import { withPoll } from '@/utils'
 
 // RPC 列表
 const RPCList = [
@@ -70,7 +75,7 @@ const config = reactive({
   privateKey: import.meta.env.VITE_PRIVATE_KEY,
   rpc: RPCList[0],
   buyAmount: 0,
-  buyContract: "",
+  buyContract: "0x12bb890508c125661e03b09ec06e404bc9289040",
   minPoolSize: 0,
   gasPrice: 7.1,
   gasLimit: 4500000,
@@ -79,9 +84,43 @@ const config = reactive({
 
 const provider = useActiveProvider(config.rpc)
 
+const getTokenPrice = async (tokenAddress: string, baseTokenAddress = WETH[ChainId.MAINNET].address) => {
+  const targetToken: Token = tokenAddress === WETH[ChainId.MAINNET].address ? WETH[ChainId.MAINNET] : await Fetcher.fetchTokenData(ChainId.MAINNET, tokenAddress, provider)
+  const baseToken: Token = baseTokenAddress === WETH[ChainId.MAINNET].address ? WETH[ChainId.MAINNET] : await Fetcher.fetchTokenData(ChainId.MAINNET, baseTokenAddress, provider)
+  const pair = await Fetcher.fetchPairData(targetToken, baseToken, provider)
+  const route = new Route([pair], WETH[ChainId.MAINNET])
+  const price = route.midPrice
+  const usdtMultiple = tokenAddress === WETH[ChainId.MAINNET].address ? 1 : ETH_PRICE.value
+  const invertOrNotPrice = tokenAddress === WETH[ChainId.MAINNET].address
+    ? price.toSignificant(6)
+    : price.invert().toSignificant(6)
+
+  return Number(invertOrNotPrice) * usdtMultiple
+}
+
 const status = reactive({
   running: false,
+  loopPriceLoading: false,
+  updateWBNBLoading: false,
 })
+
+// initial eth price (WBNB)
+const [ETH_PRICE, SET_ETH_PRICE] = useRef(400)
+const updateWBNBPrice = () => {
+  status.updateWBNBLoading = true
+  getTokenPrice(WETH[ChainId.MAINNET].address, USDT_TOKEN.address)
+    .then(p => {
+      // TODO message
+      SET_ETH_PRICE(p)
+    })
+    .catch(err => {
+      console.error("update eth price error", err)
+    })
+    .finally(() => {
+      status.updateWBNBLoading = false
+    })
+}
+updateWBNBPrice()
 
 const formRef = ref<any>(null)
 const submitForm = () => {
@@ -101,8 +140,23 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 
-const getTokenPrice = async () => {
+const loopTokenPrice = async () => {
+  status.loopPriceLoading = true
+  console.log(`WBNB当前价格为: ${ETH_PRICE.value}`)
 
+  try {
+    await withPoll(
+      async () => {
+        const price = await getTokenPrice(config.buyContract)
+        console.log(`当前价格为: ${price}`)
+        return undefined
+        // return price < 0.063 && price > 0 ? true : undefined
+      },
+      { interval: 100 },
+    )
+  } finally {
+    status.loopPriceLoading = false
+  }
 }
 
 </script>

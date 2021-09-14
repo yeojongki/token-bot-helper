@@ -1,6 +1,6 @@
 import { providers } from 'ethers'
 
-let provider: null | providers.Provider = null
+let provider: null | providers.BaseProvider = null
 
 /**
  * 获取当前 provider
