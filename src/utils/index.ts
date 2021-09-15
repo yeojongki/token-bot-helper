@@ -91,3 +91,12 @@ export async function getTokenPrice(
 
   return Number(invertOrNotPrice) * usdtMultiple
 }
+
+export async function getBlockNumber(provider: providers.BaseProvider) {
+  try {
+    const number = await provider.getBlockNumber()
+    return number
+  } catch (error) {
+    return null
+  }
+}

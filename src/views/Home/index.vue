@@ -12,13 +12,16 @@
     </el-form-item>
 
     <el-form-item label="节点" prop="rpc">
-      <el-select v-model="config.rpc">
-        <el-option v-for="item in RPCList" :key="item" :value="item">{{
-          item
-        }}</el-option>
-      </el-select>
-
-      <el-button type="primary">更改并测试</el-button>
+      <el-row type="flex">
+        <el-select v-model="config.rpc">
+          <el-option v-for="item in RPCList" :key="item" :value="item">
+            {{
+              item
+            }}
+          </el-option>
+        </el-select>
+        <async-button :api="changeRPC" type="primary">更改并测试</async-button>
+      </el-row>
     </el-form-item>
 
     <el-form-item label="池子规模" prop="minPoolSize">
@@ -48,30 +51,31 @@
     <el-form-item>
       <el-button type="primary" @click="submitForm">开始</el-button>
       <el-button @click="resetForm">重置配置</el-button>
-      <el-button @click="loopTokenPrice" :loading="status.loopPriceLoading"
-        >当前 token 实时价格</el-button
-      >
-      <el-button @click="updateWBNBPrice" :loading="status.updateWBNBLoading"
-        >更新WBNB价格</el-button
-      >
+      <el-button
+        :loading="status.loopPriceStatus === 'loading'"
+        @click="loopTokenPrice"
+      >{{ status.loopPriceStatus === 'started' ? '停止获取价格' : '当前 token 价格' }}</el-button>
+      <el-button @click="updateWBNBPrice" :loading="status.updateWBNBLoading">更新WBNB价格</el-button>
     </el-form-item>
   </el-form>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from '@vue/reactivity'
-import { useActiveProvider } from '@/hooks/useActiveProvider'
+import { ElMessage } from 'element-plus'
+import { reactive, ref } from 'vue'
+import { setProvider, useActiveProvider } from '@/hooks/useActiveProvider'
 import { useRef } from '@/hooks/useRef'
 import { USDT_TOKEN } from '@/constants/tokens'
-import { getTokenPrice, withPoll } from '@/utils'
+import { getBlockNumber, getTokenPrice, withPoll } from '@/utils'
 import { WETHTokenAddress } from '@/constants'
+
 
 // RPC 列表
 const RPCList = [
   // 'https://apis.ankr.com/e432c839f39842128925c77c3fe3d648/36016d356ed82e236d76d9b7709e8342/binance/full/main',
-  import.meta.env.VITE_RPC_NODE,
-  'https://bsc-dataseed3.binance.org',
+  // import.meta.env.VITE_RPC_NODE,
   'https://bsc-dataseed.binance.org',
+  'https://bsc-dataseed3.binance.org',
   'https://bsc-dataseed1.defibit.io',
   'https://bsc-dataseed1.ninicoin.io',
 ]
@@ -91,7 +95,8 @@ const { provider } = useActiveProvider(config.rpc)
 
 const status = reactive({
   running: false,
-  loopPriceLoading: false,
+  loopPriceStatus: '' as ('' | 'loading' | 'started'),
+  loopPriceEnded: false,
   updateWBNBLoading: false,
 })
 
@@ -135,7 +140,13 @@ const resetForm = () => {
 }
 
 const loopTokenPrice = async () => {
-  status.loopPriceLoading = true
+  if (status.loopPriceStatus === 'started') {
+    status.loopPriceStatus = ''
+    status.loopPriceEnded = true
+    return
+  }
+
+  status.loopPriceStatus = 'loading'
   console.log(`WBNB当前价格为: ${WETH_PRICE.value}`)
 
   try {
@@ -148,13 +159,34 @@ const loopTokenPrice = async () => {
           WETH_PRICE.value,
         )
         console.log(`当前价格为: ${price}`)
-        return undefined
+
+        if (status.loopPriceStatus === 'loading') {
+          status.loopPriceStatus = 'started'
+        }
+
+        console.log(status.loopPriceStatus);
+        
+        return status.loopPriceEnded
         // return price < 0.063 && price > 0 ? true : undefined
       },
       { interval: 100 },
     )
   } finally {
-    status.loopPriceLoading = false
+    status.loopPriceStatus = 'started'
+  }
+}
+
+const changeRPC = async () => {
+  try {
+    setProvider(config.rpc)
+    const { provider } = useActiveProvider()
+    const start = +new Date()
+    await provider.ready
+    // await provider.getGasPrice()
+    const delay = +new Date() - start
+    ElMessage.success(`当前节点延迟为${delay}ms`)
+  } catch (error) {
+    ElMessage.error(`节点切换失败 ${JSON.stringify(error)}`)
   }
 }
 </script>
