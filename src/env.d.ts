@@ -16,4 +16,8 @@ interface ImportMetaEnv {
    * 私钥
    */
   VITE_PRIVATE_KEY: string
+  /**
+   * 钱包账号地址
+   */
+  VITE_WALLET_ADDRESS: string
 }
