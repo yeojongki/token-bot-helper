@@ -11,7 +11,7 @@ import { isAddress, PollOptions } from 'ethers/lib/utils'
  */
 export function withPoll(
   func: () => Promise<boolean | undefined>,
-  options: PollOptions,
+  options?: PollOptions,
 ): Promise<boolean | undefined> {
   const wrappedFunc = () =>
     new Promise<boolean | undefined>(async (resolve, reject) => {

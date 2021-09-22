@@ -2599,6 +2599,11 @@
     "@vue/compiler-dom" "3.2.11"
     "@vue/shared" "3.2.11"
 
+"@vue/devtools-api@^6.0.0-beta.15":
+  version "6.0.0-beta.17"
+  resolved "https://registry.nlark.com/@vue/devtools-api/download/@vue/devtools-api-6.0.0-beta.17.tgz?cache=0&sync_timestamp=1632039112881&other_urls=https%3A%2F%2Fregistry.nlark.com%2F%40vue%2Fdevtools-api%2Fdownload%2F%40vue%2Fdevtools-api-6.0.0-beta.17.tgz#d4b9eb02c670d39a4532f4bb3c8517abce3fcb82"
+  integrity sha1-1LnrAsZw05pFMvS7PIUXq84/y4I=
+
 "@vue/reactivity@3.2.11", "@vue/reactivity@^3.2.6":
   version "3.2.11"
   resolved "https://registry.nlark.com/@vue/reactivity/download/@vue/reactivity-3.2.11.tgz?cache=0&sync_timestamp=1631141978411&other_urls=https%3A%2F%2Fregistry.nlark.com%2F%40vue%2Freactivity%2Fdownload%2F%40vue%2Freactivity-3.2.11.tgz#ec04d33acaf2b92cca2960535bec81b26cc5772b"
@@ -10262,6 +10267,14 @@ pify@^3.0.0:
   resolved "https://registry.npm.taobao.org/pify/download/pify-3.0.0.tgz#e5a4acd2c101fdf3d9a4d07f0dbc4db49dd28176"
   integrity sha1-5aSs0sEB/fPZpNB/DbxNtJ3SgXY=
 
+pinia@^2.0.0-rc.9:
+  version "2.0.0-rc.9"
+  resolved "https://registry.nlark.com/pinia/download/pinia-2.0.0-rc.9.tgz#ea0812ea28f8197f14767e9b731ae10d3a523803"
+  integrity sha1-6ggS6ij4GX8Udn6bcxrhDTpSOAM=
+  dependencies:
+    "@vue/devtools-api" "^6.0.0-beta.15"
+    vue-demi "*"
+
 pinkie-promise@^2.0.0:
   version "2.0.1"
   resolved "https://registry.npm.taobao.org/pinkie-promise/download/pinkie-promise-2.0.1.tgz?cache=0&sync_timestamp=1589682729560&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2Fpinkie-promise%2Fdownload%2Fpinkie-promise-2.0.1.tgz#2135d6dfa7a358c069ac9b178776288228450ffa"
@@ -13386,6 +13399,11 @@ vscode-vue-languageservice@^0.27.0:
     vscode-languageserver-textdocument "^1.0.1"
     vscode-pug-languageservice "^0.27.14"
     vscode-typescript-languageservice "^0.27.18"
+
+vue-demi@*:
+  version "0.11.4"
+  resolved "https://registry.nlark.com/vue-demi/download/vue-demi-0.11.4.tgz#6101992fe4724cf5634018a16e953f3052e94e2a"
+  integrity sha1-YQGZL+RyTPVjQBihbpU/MFLpTio=
 
 vue-tsc@^0.2.2:
   version "0.2.3"

@@ -1,3 +1,12 @@
+export interface TokenInfo {
+  address: string
+  price?: number
+  symbol?: string
+  chainId?: number
+  decimals?: number
+  logoURI?: string
+}
+
 export const WBNB_TOKEN = {
   name: 'WBNB Token',
   symbol: 'WBNB',
@@ -26,4 +35,10 @@ export const USDT_TOKEN = {
   decimals: 18,
   logoURI:
     'https://pancakeswap.finance/images/tokens/0x55d398326f99059ff775485246999027b3197955.png',
+}
+
+export default {
+  [WBNB_TOKEN.address]: WBNB_TOKEN,
+  [BUSD_TOKEN.address]: BUSD_TOKEN,
+  [USDT_TOKEN.address]: USDT_TOKEN,
 }
