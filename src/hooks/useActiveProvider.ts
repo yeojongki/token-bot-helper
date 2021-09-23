@@ -1,5 +1,5 @@
+import { ChainId } from '@pancakeswap/sdk'
 import { providers, Wallet } from 'ethers'
-import { reactive, toRefs } from 'vue'
 
 let provider: null | providers.BaseProvider = null
 let wallet: null | Wallet = null
@@ -22,7 +22,7 @@ export function setProvider(url: string) {
   provider = url.startsWith('wss')
     ? new providers.WebSocketProvider(url)
     : new providers.JsonRpcProvider(url)
-    
+
   return provider
 }
 
@@ -41,6 +41,7 @@ export function useActiveProvider(url: string = import.meta.env.VITE_RPC_NODE) {
   }
 
   return {
+    chainId: ChainId.MAINNET,
     account: import.meta.env.VITE_WALLET_ADDRESS,
     provider: provider as providers.BaseProvider,
     wallet: wallet as Wallet,
