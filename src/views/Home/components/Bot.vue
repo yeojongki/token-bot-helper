@@ -267,8 +267,6 @@ const changeRPC = async () => {
 
 <style lang="scss" scoped>
 .Bot {
-  padding: 10px;
-  max-width: 500px;
   margin: 0 auto;
 }
 </style>

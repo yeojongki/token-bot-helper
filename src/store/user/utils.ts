@@ -1,26 +1,4 @@
-import { Token } from '@pancakeswap/sdk'
 import { parseUnits } from 'ethers/lib/utils'
-import { SerializedToken } from '.'
-
-export function serializeToken(token: Token): SerializedToken {
-  return {
-    chainId: token.chainId,
-    address: token.address,
-    decimals: token.decimals,
-    symbol: token.symbol,
-    name: token.name,
-  }
-}
-
-export function deserializeToken(serializedToken: SerializedToken): Token {
-  return new Token(
-    serializedToken.chainId,
-    serializedToken.address,
-    serializedToken.decimals,
-    serializedToken.symbol,
-    serializedToken.name,
-  )
-}
 
 export enum GAS_PRICE {
   default = '5',

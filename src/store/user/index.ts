@@ -1,63 +1,63 @@
+import { defineStore, acceptHMRUpdate } from 'pinia'
+import { ChainId } from '@pancakeswap/sdk'
 import { WBNB_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
-import { ChainId } from '@pancakeswap/sdk'
-import { defineStore, acceptHMRUpdate } from 'pinia'
-import { deserializeToken } from './utils'
+import { TokenWithPrice } from '../tokenList'
+import { getFromStorage, setToStorage } from '@/utils/storage'
 
-export interface SerializedToken {
-  chainId: number
-  address: string
-  decimals: number
-  symbol?: string
-  name?: string
+export interface TokenPriceMap {
+  [chainId: number]: {
+    [address: string]: TokenWithPrice
+  }
 }
 
 const currentTimestamp = () => new Date().getTime()
 
+const namespace = 'user'
+
 export const useUserStore = defineStore({
-  id: 'user',
+  id: namespace,
   state: () => ({
     timestamp: currentTimestamp(),
     tokens: {
-      [ChainId.MAINNET as number]: {
+      [ChainId.MAINNET as number]: getFromStorage<TokenPriceMap>(
+        namespace,
+        'tokens',
+      )?.[ChainId.MAINNET] ?? {
         [WBNB_TOKEN.address]: {
           chainId: WBNB_TOKEN.chainId,
           decimals: WBNB_TOKEN.decimals,
           address: WBNB_TOKEN.address,
           symbol: WBNB_TOKEN.symbol,
           name: WBNB_TOKEN.name,
+          price: '',
         },
       },
-    } as {
-      [chainId: number]: {
-        [address: string]: SerializedToken
-      }
-    },
+    } as TokenPriceMap,
   }),
   getters: {
-    userAddedTokens(state) {
+    userAddedTokens: (state) => {
       const { chainId } = useActiveProvider()
       if (!chainId) return []
-      return Object.values(state.tokens?.[chainId] ?? {}).map(deserializeToken)
+      return Object.values(state.tokens?.[chainId] ?? {})
     },
   },
   actions: {
-    addSerializedToken({
-      serializedToken,
-    }: {
-      serializedToken: SerializedToken
-    }) {
+    addToken(token: TokenWithPrice) {
       if (!this.tokens) {
         this.tokens = {}
       }
 
-      this.tokens[serializedToken.chainId] =
-        this.tokens[serializedToken.chainId] || {}
-      this.tokens[serializedToken.chainId][serializedToken.address] =
-        serializedToken
-      this.timestamp = currentTimestamp()
+      this.tokens[token.chainId] = this.tokens[token.chainId] || {}
+
+      if (!this.tokens[token.chainId][token.address]) {
+        this.tokens[token.chainId][token.address] = token
+
+        setToStorage(namespace, 'tokens', this.tokens)
+        this.timestamp = currentTimestamp()
+      }
     },
-    removeSerializedToken({
+    removeAddedToken({
       address,
       chainId,
     }: {
@@ -69,7 +69,24 @@ export const useUserStore = defineStore({
       }
       this.tokens[chainId] = this.tokens[chainId] || {}
       delete this.tokens[chainId][address]
+
+      setToStorage(namespace, 'tokens', this.tokens)
       this.timestamp = currentTimestamp()
+    },
+    updateAddedTokenPrice({
+      chainId,
+      address,
+      price,
+    }: {
+      chainId: ChainId
+      address: string
+      price: string | number
+    }) {
+      this.tokens[chainId] = this.tokens[chainId] || {}
+      if (this.tokens[chainId][address]) {
+        this.tokens[chainId][address].price = price
+        this.timestamp = currentTimestamp()
+      }
     },
   },
 })

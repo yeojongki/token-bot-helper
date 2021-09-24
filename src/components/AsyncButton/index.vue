@@ -23,7 +23,7 @@ const handleClick = async () => {
     loading.value = true
     await props.api()
   } catch (error) {
-
+    console.error(error);
   } finally {
     loading.value = false
   }

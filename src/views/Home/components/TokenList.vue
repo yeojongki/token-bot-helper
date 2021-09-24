@@ -1,51 +1,64 @@
 <template>
+  <div class="flex items-center">
+    <div>观察区:</div>
+  </div>
+  <div class="flex mt-10">
+    <el-input v-model="addTokenAddress" class="mr-10"></el-input>
+    <async-button
+      :api="onAddToken"
+      class="ml-15"
+      type="primary"
+      :disabled="!addTokenAddress.length"
+    >新增</async-button>
+  </div>
   <ul class="token-list" style="overflow: auto">
-    <li v-for="i in list" class="token-list-item">{{ i.symbol }}: {{ i.price || '-' }}</li>
+    <li
+      v-for="i in userStore.userAddedTokens"
+      class="token-list-item"
+    >{{ i.symbol }}: {{ i.address === WBNB_TOKEN.address ? priceStore.ethPrice : (i.price || '-') }}</li>
   </ul>
 </template>
 
 <script lang="ts" setup>
 import { onMounted, reactive, ref } from 'vue'
-import { TokenInfo, BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
+import { ElButton, ElInput } from 'element-plus'
+import { BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
+import type { TokenInfo } from '@/constants/tokens'
 import { getTokenPrice, withPoll } from '@/utils'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { usePriceStore } from '@/store/price'
 import { WETHTokenAddress } from '@/constants'
 import { useUserStore } from '@/store/user'
+import AsyncButton from '@/components/AsyncButton/index.vue'
+import { Fetcher } from '@pancakeswap/sdk'
+import { useTokenListStore } from '@/store/tokenList'
+import useStore from 'element-plus/lib/components/table/src/store'
 
+const { chainId, provider } = useActiveProvider()
 const priceStore = usePriceStore()
-const { chainId } = useActiveProvider()
+const tokenListStore = useTokenListStore()
 const userStore = useUserStore()
-const list = reactive<{ [k: string]: TokenInfo }>({
-  // [userStore.tokens[chainId]]
-  [WBNB_TOKEN.address]: WBNB_TOKEN,
-  '0x6b9f6f911384886b2e622e406327085238f8a3c5': {
-    address: '0x6b9f6f911384886b2e622e406327085238f8a3c5'
-  },
-  '0x12bb890508c125661e03b09ec06e404bc9289040': {
-    address: '0x12bb890508c125661e03b09ec06e404bc9289040'
+const WBNB_ADDRESS = WBNB_TOKEN.address
+
+const addTokenAddress = ref('')
+const onAddToken = async () => {
+  const token = await tokenListStore.getTokenDetail(addTokenAddress.value)
+  if (token) {
+    userStore.addToken(token)
   }
-})
-
-const setTokenPrice = (address: string, price: number) => {
-  console.log({ address, price });
-
-  list[address].price = price
 }
 
 onMounted(() => {
   const { provider } = useActiveProvider()
-
-
   withPoll(async () => {
-    Object.keys(list).map(address => {
-      if (address === WBNB_TOKEN.address) {
-        setTokenPrice(address, priceStore.ethPrice)
-      } else if (address === USDT_TOKEN.address || address === BUSD_TOKEN.address) {
-        // setTokenPrice(address, 6.4)
+    userStore.userAddedTokens.forEach(({ chainId, address }) => {
+      if (address === WBNB_TOKEN.address ||
+        address === USDT_TOKEN.address ||
+        address === BUSD_TOKEN.address) {
+        // userStore.updateAddedToken(address, 6.4)
       } else {
         getTokenPrice(address, WBNB_TOKEN.address, provider, priceStore.ethPrice).then(price => {
-          setTokenPrice(address, price)
+          userStore.updateAddedTokenPrice({ chainId, address, price })
         }).catch(err => {
           console.log(err);
         })

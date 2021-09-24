@@ -1,10 +1,10 @@
 <template>
-  <el-row :gutter="20">
-    <el-col :span="6">
-      <token-list :eth-price="priceStore.ethPrice"></token-list>
+  <el-row class="home" :gutter="20">
+    <el-col :span="9">
+      <token-list></token-list>
     </el-col>
 
-    <el-col :span="18">
+    <el-col :span="13">
       <bot></bot>
     </el-col>
   </el-row>
@@ -12,9 +12,12 @@
 
 <script setup lang="ts">
 import { ElRow, ElCol } from 'element-plus'
-import { usePriceStore } from '@/store/price';
 import Bot from "./components/Bot.vue";
 import TokenList from "./components/TokenList.vue"
-
-const priceStore = usePriceStore()
 </script>
+
+<style scoped>
+.home {
+  padding: 10px;
+}
+</style>
