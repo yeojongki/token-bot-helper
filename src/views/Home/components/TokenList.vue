@@ -1,7 +1,4 @@
 <template>
-  <div class="flex items-center">
-    <div>观察区:</div>
-  </div>
   <div class="flex mt-10">
     <el-input v-model="addTokenAddress" class="mr-10"></el-input>
     <async-button
@@ -12,10 +9,22 @@
     >新增</async-button>
   </div>
   <ul class="token-list" style="overflow: auto">
-    <li
-      v-for="i in userStore.userAddedTokens"
-      class="token-list-item"
-    >{{ i.symbol }}: {{ i.address === WBNB_TOKEN.address ? priceStore.ethPrice : (i.price || '-') }}</li>
+    <li v-for="i in userStore.userAddedTokens" class="token-list-item mb-10">
+      <div class="flex justify-between items-center">
+        <div class="flex flex-1">
+          <div class="item-symbol text-right">{{ i.symbol }}:</div>
+          <div>{{ i.address === WBNB_TOKEN.address ? priceStore.ethPrice : formatTokenPrice(i.price) }}</div>
+        </div>
+        <div>
+          <el-button size="small" type="primary" @click="copyTokenAddress(i.address)">地址</el-button>
+          <el-button
+            size="small"
+            type="danger"
+            @click="userStore.removeAddedToken({ chainId: i.chainId, address: i.address })"
+          >删除</el-button>
+        </div>
+      </div>
+    </li>
   </ul>
 </template>
 
@@ -33,6 +42,8 @@ import AsyncButton from '@/components/AsyncButton/index.vue'
 import { Fetcher } from '@pancakeswap/sdk'
 import { useTokenListStore } from '@/store/tokenList'
 import useStore from 'element-plus/lib/components/table/src/store'
+import { useRef } from '@/hooks/useRef'
+import copyText from '@/utils/copyText'
 
 const { chainId, provider } = useActiveProvider()
 const priceStore = usePriceStore()
@@ -40,12 +51,25 @@ const tokenListStore = useTokenListStore()
 const userStore = useUserStore()
 const WBNB_ADDRESS = WBNB_TOKEN.address
 
-const addTokenAddress = ref('')
+const [addTokenAddress, setAddTokenAddress] = useRef('')
 const onAddToken = async () => {
   const token = await tokenListStore.getTokenDetail(addTokenAddress.value)
   if (token) {
     userStore.addToken(token)
+    // reset empty
+    setAddTokenAddress('')
   }
+}
+
+// 格式化 token 价格 (限制长度)
+const formatTokenPrice = (price?: number | string) => {
+  if (!price) return '-'
+  return String(price).slice(0, 12)
+}
+
+// 复制 token 地址
+const copyTokenAddress = (address: string) => {
+  copyText(address)
 }
 
 onMounted(() => {
@@ -65,28 +89,15 @@ onMounted(() => {
       }
     })
     return undefined
-  }, { interval: 1000 })
+  }, { interval: 400 })
 })
 </script>
 
-<style lang="scss">
-.infinite-list {
-  height: 300px;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-
-  .infinite-list-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 50px;
-    background: var(--el-color-primary-light-9);
-    margin: 10px;
-    color: var(--el-color-primary);
-    & + .list-item {
-      margin-top: 10px;
-    }
-  }
+<style lang="scss" scoped>
+.item-symbol {
+  width: 20%;
+  margin-right: 5px;
+  font-weight: bold;
+  word-break: break-word;
 }
 </style>

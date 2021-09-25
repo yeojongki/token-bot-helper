@@ -7,10 +7,13 @@ import { defineStore, acceptHMRUpdate } from 'pinia'
 export const usePriceStore = defineStore({
   id: 'price',
   state: () => ({
-    ethPrice: 400,
+    ethPrice: 350,
     loading: false,
   }),
   actions: {
+    /**
+     * 更新主币价格 (BNB)
+     */
     async updateEthPrice() {
       const { provider } = useActiveProvider()
 

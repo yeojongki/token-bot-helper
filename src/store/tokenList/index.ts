@@ -1,8 +1,5 @@
-import { WETHTokenAddress } from '@/constants'
 import ERC20_ABI from '@/constants/erc20'
-import { USDT_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
-import { getTokenPrice } from '@/utils'
 import { Contract } from '@ethersproject/contracts'
 import { ChainId, Token } from '@pancakeswap/sdk'
 import { defineStore, acceptHMRUpdate } from 'pinia'
@@ -25,33 +22,7 @@ export class TokenWithPrice extends Token {
 
 export const useTokenListStore = defineStore({
   id: 'tokenList',
-  state: () => ({
-    ethPrice: 400,
-    loading: false,
-  }),
   actions: {
-    /**
-     * 更新主币价格 (BNB)
-     */
-    async updateEthPrice() {
-      const { provider } = useActiveProvider()
-
-      try {
-        this.loading = true
-        const price = await getTokenPrice(
-          WETHTokenAddress,
-          USDT_TOKEN.address,
-          provider,
-          this.ethPrice,
-        )
-
-        this.ethPrice = price
-      } catch (error) {
-        console.error('update eth price error', error)
-      } finally {
-        this.loading = false
-      }
-    },
     async getTokenDetail(address: string) {
       try {
         const { provider, chainId } = useActiveProvider()
