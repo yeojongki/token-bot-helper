@@ -6,23 +6,6 @@
     label-position="top"
     :model="config"
   >
-    <el-form-item label="私钥" prop="privateKey" :required="true">
-      <el-input v-model="config.privateKey" type="password" />
-    </el-form-item>
-
-    <el-form-item label="节点" prop="rpc">
-      <div class="flex w-full items-center">
-        <el-select class="flex-1 mr-10" v-model="config.rpc">
-          <el-option v-for="item in RPCList" :key="item" :value="item">
-            {{
-              item
-            }}
-          </el-option>
-        </el-select>
-        <async-button :api="changeRPC" type="primary">更改</async-button>
-      </div>
-    </el-form-item>
-
     <el-form-item label="支出的 token 地址" prop="poolContract" :required="true">
       <div class="flex">
         <el-select class="w-full" v-model="config.poolContract">
@@ -74,7 +57,7 @@
     <el-form-item>
       <el-button type="primary" @click="submitForm">开始买入</el-button>
       <el-button @click="resetForm">重置配置</el-button>
-      <el-button @click="priceStore.updateEthPrice" :loading="priceStore.loading">更新 BNB 价格</el-button>
+      <el-button @click="tokenListStore.updateEthPrice" :loading="tokenListStore.loading">更新 BNB 价格</el-button>
     </el-form-item>
   </el-form>
 </template>
@@ -93,7 +76,6 @@ import {
   ElCol,
 } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
-import { setProvider, useActiveProvider } from '@/hooks/useActiveProvider'
 import { useRef } from '@/hooks/useRef'
 import { BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
 import { getBlockNumber, getTokenPrice, withPoll } from '@/utils'
@@ -103,7 +85,9 @@ import { ChainId, Fetcher, Token, TokenAmount, WETH } from '@pancakeswap/sdk'
 import { Contract } from '@ethersproject/contracts'
 import ERC20_ABI from '@/constants/erc20'
 import { BigNumber, utils } from 'ethers'
-import { usePriceStore } from '@/store/price'
+import { useUserStore } from '@/store/user'
+import { useActiveProvider } from '@/hooks/useActiveProvider'
+import { useTokensStore } from '@/store/tokens'
 
 interface SwapInfo {
   buyToken: Token | null
@@ -111,19 +95,13 @@ interface SwapInfo {
   poolContract: Contract | null
 }
 
-// RPC 列表
-const RPCList = [
-  // 'https://apis.ankr.com/e432c839f39842128925c77c3fe3d648/36016d356ed82e236d76d9b7709e8342/binance/full/main',
-  // import.meta.env.VITE_RPC_NODE,
-  'https://bsc-dataseed.binance.org',
-  'https://bsc-dataseed1.defibit.io',
-  'https://bsc-dataseed3.binance.org',
-  'https://bsc-dataseed1.ninicoin.io',
-]
+const userStore = useUserStore()
+const tokenListStore = useTokensStore()
 
+/**
+ * 购买配置信息
+ */
 const config = reactive({
-  privateKey: import.meta.env.VITE_PRIVATE_KEY,
-  rpc: RPCList[0],
   buyAmount: 0,
   poolContract: WBNB_TOKEN.address,
   buyContract: '0x12bb890508c125661e03b09ec06e404bc9289040',
@@ -133,7 +111,8 @@ const config = reactive({
   slippage: 10,
 })
 
-const { provider, account } = useActiveProvider(config.rpc)
+// const provider = userStore.activeProvider.provider
+const { provider, chainId, account } = useActiveProvider()
 
 const swapInfo = reactive<SwapInfo>({
   buyContract: new Contract(config.buyContract, ERC20_ABI, provider),
@@ -145,7 +124,6 @@ const swapInfo = reactive<SwapInfo>({
   //   wallet,
   // )
 })
-
 
 onMounted(async () => {
   // const start = +new Date()
@@ -174,8 +152,6 @@ const status = reactive({
 
 // 初始基础代币
 const baseTokens = [WBNB_TOKEN, BUSD_TOKEN, USDT_TOKEN]
-const priceStore = usePriceStore()
-priceStore.updateEthPrice()
 
 const [buyTokenPrice, setBuyTokenPrice] = useRef(0)
 
@@ -229,7 +205,7 @@ const loopTokenPrice = async () => {
           config.buyContract,
           WETHTokenAddress,
           provider,
-          priceStore.ethPrice,
+          // priceStore.ethPrice,
         )
 
         // console.log(`当前价格: ${price}`)
@@ -246,20 +222,6 @@ const loopTokenPrice = async () => {
     )
   } finally {
     status.loopPriceStatus = 'started'
-  }
-}
-
-const changeRPC = async () => {
-  try {
-    setProvider(config.rpc)
-    const { provider } = useActiveProvider()
-    const start = +new Date()
-    await provider.ready
-    // await provider.getGasPrice()
-    const delay = +new Date() - start
-    ElMessage.success(`当前节点延迟为${delay}ms`)
-  } catch (error) {
-    ElMessage.error(`节点切换失败 ${JSON.stringify(error)}`)
   }
 }
 </script>

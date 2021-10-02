@@ -1,4 +1,5 @@
 import ERC20_ABI from '@/constants/erc20'
+import { useUserStore } from '@/store/user'
 import { getContract } from '@/utils'
 import { Contract } from 'ethers'
 import { useActiveProvider } from './useActiveProvider'
@@ -15,9 +16,18 @@ function useContract(
   ABI: any,
   withSignerIfPossible = true,
 ): Contract | null {
-  const { wallet, provider } = useActiveProvider()
+  // const userStore = useUserStore()
 
-  if (!address || !ABI || !wallet) return null
+  const { provider, wallet } = useActiveProvider()
+  if (
+    !address ||
+    !ABI ||
+    !provider ||
+    !wallet
+    // !userStore.activeProvider.provider ||
+    // !userStore.activeProvider.wallet
+  )
+    return null
   try {
     return getContract(address, ABI, withSignerIfPossible ? wallet : provider)
   } catch (error) {
@@ -28,9 +38,9 @@ function useContract(
 
 /**
  * 获取 token 合约
- * @param tokenAddress 
- * @param withSignerIfPossible 
- * @returns 
+ * @param tokenAddress
+ * @param withSignerIfPossible
+ * @returns
  */
 export function useTokenContract(
   tokenAddress?: string,

@@ -1,7 +1,26 @@
-import { AddressZero, WETHTokenAddress } from '@/constants'
-import { WETH, ChainId, Token, Fetcher, Route } from '@pancakeswap/sdk'
+import {
+  AddressZero,
+  BETTER_TRADE_LESS_HOPS_THRESHOLD,
+  WETHTokenAddress,
+} from '@/constants'
+import {
+  mainnetTokens,
+  mainnetTokensAddressMap,
+  USDT_TOKEN,
+} from '@/constants/tokens'
+import {
+  ChainId,
+  Token,
+  Fetcher,
+  Route,
+  Trade,
+  TokenAmount,
+  TradeType,
+  JSBI,
+} from '@pancakeswap/sdk'
 import { Contract, providers, Signer, utils } from 'ethers'
 import { isAddress, PollOptions } from 'ethers/lib/utils'
+import { getPairs, isTradeBetter } from './trade'
 
 /**
  * 轮训执行函数 若结果为 undefined 以外的值则会重新执行
@@ -53,43 +72,87 @@ export function getContract(
 
 /**
  * 获取 token 价格
- * @param tokenAddress
- * @param baseTokenAddress
+ * @param outputTokenAddress
+ * @param inputTokenAddress
  * @param provider
  * @param ethPrice
  * @returns
  */
 export async function getTokenPrice(
-  tokenAddress: string,
-  baseTokenAddress = WETHTokenAddress,
+  outputTokenAddress: string,
+  inputTokenAddress = WETHTokenAddress,
   provider: providers.BaseProvider,
-  ethPrice: number,
+  // ethPrice: number,
 ) {
   const targetToken: Token =
-    tokenAddress === WETHTokenAddress
-      ? WETH[ChainId.MAINNET]
-      : await Fetcher.fetchTokenData(ChainId.MAINNET, tokenAddress, provider)
+    mainnetTokensAddressMap[outputTokenAddress] ??
+    (await Fetcher.fetchTokenData(
+      ChainId.MAINNET,
+      outputTokenAddress,
+      provider,
+    ))
 
   const baseToken: Token =
-    baseTokenAddress === WETHTokenAddress
-      ? WETH[ChainId.MAINNET]
-      : await Fetcher.fetchTokenData(
-          ChainId.MAINNET,
-          baseTokenAddress,
-          provider,
-        )
+    mainnetTokensAddressMap[inputTokenAddress] ??
+    (await Fetcher.fetchTokenData(ChainId.MAINNET, inputTokenAddress, provider))
 
-  const pair = await Fetcher.fetchPairData(targetToken, baseToken, provider)
-  const route = new Route([pair], WETH[ChainId.MAINNET])
+  // const pair = await Fetcher.fetchPairData(targetToken, baseToken, provider)
+  // const route = new Route([pair], WETH[ChainId.MAINNET])
 
-  const price = route.midPrice
-  const usdtMultiple = tokenAddress === WETHTokenAddress ? 1 : ethPrice
-  const invertOrNotPrice =
-    tokenAddress === WETHTokenAddress
-      ? price.toSignificant(6)
-      : price.invert().toSignificant(6)
+  const typedValueParsed = utils.parseUnits('1', baseToken.decimals).toString()
+  const parsedAmount = new TokenAmount(baseToken, JSBI.BigInt(typedValueParsed))
 
-  return Number(invertOrNotPrice) * usdtMultiple
+  const allowedPairs = await getPairs(provider, baseToken, targetToken)
+  // const bestTradeExactIn = Trade.bestTradeExactIn(
+  //   allowedPairs,
+  //   parsedAmount,
+  //   targetToken,
+  //   { maxHops: 1, maxNumResults: 1 },
+  // )[0]
+
+  // search through trades with varying hops, find best trade out of them
+  let bestTradeSoFar: Trade | null = null
+  for (let i = 1; i <= 3; i++) {
+    const currentTrade: Trade | null =
+      Trade.bestTradeExactIn(allowedPairs, parsedAmount, targetToken, {
+        maxHops: i,
+        maxNumResults: 1,
+      })[0] ?? null
+    // if current trade is best yet, save it
+    if (
+      isTradeBetter(
+        bestTradeSoFar,
+        currentTrade,
+        BETTER_TRADE_LESS_HOPS_THRESHOLD,
+      )
+    ) {
+      bestTradeSoFar = currentTrade
+    }
+  }
+
+  // if (outputTokenAddress === '0x96Af135d3ccc996aE8935EAB6acf1471ad7a06b2') {
+  //   console.log(bestTradeSoFar)
+  //   console.log(Number(bestTradeSoFar?.executionPrice.toSignificant(6)))
+  // }
+
+  return Number(bestTradeSoFar?.executionPrice.toSignificant(6))
+  // const trade = new Trade(
+  //   route,
+  //   new TokenAmount(WETH[ChainId.MAINNET], '1000000000000000000'),
+  //   TradeType.EXACT_INPUT,
+  // )
+
+  // outputTokenAddress === '0x96Af135d3ccc996aE8935EAB6acf1471ad7a06b2' &&
+  //   console.log(111, trade.executionPrice.toSignificant(6))
+
+  // const price = route.midPrice
+  // const usdtMultiple = outputTokenAddress === WETHTokenAddress ? 1 : ethPrice
+  // const invertOrNotPrice =
+  //   outputTokenAddress === WETHTokenAddress
+  //     ? price.toSignificant(6)
+  //     : price.invert().toSignificant(6)
+
+  // return Number(invertOrNotPrice) * usdtMultiple
 }
 
 export async function getBlockNumber(provider: providers.BaseProvider) {
