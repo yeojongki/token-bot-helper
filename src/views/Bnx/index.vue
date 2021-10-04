@@ -1,5 +1,5 @@
 <template>
-  <el-card class="page-bnx">
+  <el-card class="page-bnx" :header="`打工列表 (${jobsData.length})`">
     <div class="mb-10 flex items-center justify-between">
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
@@ -48,6 +48,46 @@
       </el-table-column>
     </el-table>
   </el-card>
+
+  <el-card class="page-bnx" :header="`未打工列表 (${heroNoWorkingData.length})`">
+    <div class="mb-10 flex items-center justify-end">
+      <el-button
+        :disabled="!noWorkingMultipleSelection.length"
+        class="ml-10"
+        type="primary"
+        @click="batchGoWork(0)"
+      >批量打工</el-button>
+    </div>
+    <el-table
+      :data="heroNoWorkingData"
+      :border="true"
+      :show-summary="true"
+      @selection-change="noWorkingHandleSelectionChange"
+    >
+      <el-table-column type="selection" width="55" />
+      <el-table-column prop="tokenId" label="Token ID" :width="100">
+        <template #default="{ row }">
+          <div
+            class="id-column"
+            :title="row.tokenID"
+          >{{ row.tokenId.slice(0, 4) }}...{{ row.tokenId.slice(-4) }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column prop="role" label="角色"></el-table-column>
+      <el-table-column prop="level" sortable label="等级" :width="80"></el-table-column>
+      <el-table-column prop="strength" sortable label="力量"></el-table-column>
+      <el-table-column prop="agility" sortable label="敏捷"></el-table-column>
+      <el-table-column prop="constitution" sortable label="体质"></el-table-column>
+      <el-table-column prop="willpower" sortable label="意志"></el-table-column>
+      <el-table-column prop="intelligence" sortable label="智力"></el-table-column>
+      <el-table-column prop="spirit" sortable label="精神"></el-table-column>
+      <!-- <el-table-column label="操作">
+        <template #default="{ row }">
+          <el-button type="primary" size="small" @click="getAwardByTokenId(row.tokenId)">获取收益</el-button>
+        </template>
+      </el-table-column>-->
+    </el-table>
+  </el-card>
 </template>
 
 <script setup lang="ts">
@@ -66,7 +106,7 @@ import type { Ref } from 'vue'
 import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults';
 import { useRef } from '@/hooks/useRef';
 
-interface Row {
+interface Hero {
   tokenId: string
   strength: Number
   agility: Number
@@ -76,16 +116,28 @@ interface Row {
   spirit: Number
   level: Number
   role: string,
+}
+
+interface WorkingHero extends Omit<Hero, 'workType'> {
   income: number,
 }
 
 const { provider, account, wallet } = useActiveProvider()
 
-const jobsData: Ref<any[]> = ref([])
+const jobsData: Ref<WorkingHero[]> = ref([])
 const [listLoading, setListLoading] = useRef(false)
+
+const heroNoWorkingData: Ref<Hero[]> = ref([])
+const noWorkingMultipleSelection = ref<Hero[]>([])
+
+// 未打工勾选事件
+const noWorkingHandleSelectionChange = (val: Hero[]) => {
+  noWorkingMultipleSelection.value = val
+}
 
 const contractAddress = {
   PlayInfoAddress: "0x8b8de33B057aF4F089Dcb56F21Bc6B135F99276A",
+  NewPlayInfoAddress: "0x8b8de33B057aF4F089Dcb56F21Bc6B135F99276A",
   MiningAddress: "0xe278BDF4541cc309b379F9A4E867F60fD6B7BC59",
   NewMiningAddress: "0x698E165F2897e4daC68671c4cDFf337bbC543767",
   BscAddress: "0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97",
@@ -138,6 +190,7 @@ const contractAddress = {
 
 const contracts = {
   PlayInfoAddress: new Contract(contractAddress.PlayInfoAddress, playInfoABI, wallet),
+  NewPlayInfoAddress: new Contract(contractAddress.NewPlayInfoAddress, playInfoABI, wallet),
   MiningAddress: new Contract(contractAddress.MiningAddress, miningABI, wallet),
   NewMiningAddress: new Contract(contractAddress.NewMiningAddress, newMiningABI, wallet),
   WarriorAddress: new Contract(contractAddress.WarriorAddress, roleABI, wallet),
@@ -170,14 +223,15 @@ let roleType = {
 
 // 批量获取时的最低收入
 const minIncome = ref(0)
-const multipleSelection = ref<Row[]>([])
+const multipleSelection = ref<WorkingHero[]>([])
 
 // 勾选事件
-const handleSelectionChange = (val: Row[]) => {
+const handleSelectionChange = (val: WorkingHero[]) => {
   multipleSelection.value = val
 }
 
-async function getPlayInfo(index: number, miningContract = contracts.MiningAddress): Promise<Row> {
+// 获取打工信息
+async function getPlayInfo(index: number, miningContract = contracts.MiningAddress): Promise<WorkingHero> {
   const tokenId = String(await miningContract.tokenOfOwnerByIndex(account, index))
   const playInfo = await contracts.PlayInfoAddress.getPlayerInfoBySet(tokenId)
   const recWorkInfo = await miningContract.getPlayerWork(tokenId)
@@ -206,15 +260,33 @@ async function getPlayInfo(index: number, miningContract = contracts.MiningAddre
   }
 }
 
+// 获取普通信息
+async function getPlayerInfo(index: number, contract: Contract) {
+  const tokenId = String(await contract.tokenOfOwnerByIndex(account, index))
+  const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(tokenId)
+
+  return {
+    tokenId,
+    strength: Number(playInfo[0][0]),
+    agility: Number(playInfo[0][1]),
+    constitution: Number(playInfo[0][2]),
+    willpower: Number(playInfo[0][3]),
+    intelligence: Number(playInfo[0][4]),
+    spirit: Number(playInfo[0][5]),
+    level: Number(playInfo[0][6]),
+    role: roleType[playInfo[1] as keyof typeof roleType],
+  }
+}
+
 async function initData() {
   try {
-    const promiseDatas: Promise<Row>[] = []
+    const promiseDatas: Promise<WorkingHero>[] = []
     const partimeJobCount = Number(await contracts.MiningAddress.balanceOf(account))
     const newMiningJobCount = Number(await contracts.NewMiningAddress.balanceOf(account))
 
     for (let i = 0; i < newMiningJobCount; i++) {
       promiseDatas.push(
-        new Promise<Row>((resolve, reject) => {
+        new Promise<WorkingHero>((resolve, reject) => {
           getPlayInfo(i, contracts.NewMiningAddress).then(resolve).catch(reject)
         })
       )
@@ -222,7 +294,7 @@ async function initData() {
 
     for (let i = 0; i < partimeJobCount; i++) {
       promiseDatas.push(
-        new Promise<Row>((resolve, reject) => {
+        new Promise<WorkingHero>((resolve, reject) => {
           getPlayInfo(i).then(resolve).catch(reject)
         })
       )
@@ -266,14 +338,14 @@ async function batchGetAwards(index = 0) {
       await batchGetAwards(index)
     }
   } else {
-    ElMessage.info(`批量领取完成`)
+    ElMessage.success(`批量领取完成`)
   }
 }
 
 /**
  * 总计
  */
-const getSummaries = (param: { columns: TableColumnCtx<any>, data: Row[] }) => {
+const getSummaries = (param: { columns: TableColumnCtx<any>, data: WorkingHero[] }) => {
   const { columns, data } = param
   const sums: string[] = []
   // @ts-ignore
@@ -285,7 +357,7 @@ const getSummaries = (param: { columns: TableColumnCtx<any>, data: Row[] }) => {
 
     if (column.property === 'income') {
       const values = data.map((item) => {
-        return Number(item[column.property as keyof Row])
+        return Number(item[column.property as keyof WorkingHero])
       })
       sums[index] = `${values.reduce((prev, curr) => {
         const value = Number(curr)
@@ -299,6 +371,55 @@ const getSummaries = (param: { columns: TableColumnCtx<any>, data: Row[] }) => {
   return sums
 }
 
+function getCardsNotWork() {
+  Promise.all([
+    contracts.WarriorAddress.balanceOf(account),
+    contracts.RobberAddress.balanceOf(account),
+    contracts.MageAddress.balanceOf(account),
+    contracts.RangerAddress.balanceOf(account)
+  ])
+    .then(res => {
+      const totalCountArray = res.map(Number)
+      const [warriorCount, robberCount, mageCount, rangerCount] = totalCountArray
+
+      const promiseDatas: Promise<Hero>[] = []
+      for (let i = 0; i < warriorCount; i++) {
+        promiseDatas.push(getPlayerInfo(i, contracts.WarriorAddress))
+      }
+
+      for (let i = 0; i < robberCount; i++) {
+        promiseDatas.push(getPlayerInfo(i, contracts.RobberAddress))
+      }
+
+      for (let i = 0; i < mageCount; i++) {
+        promiseDatas.push(getPlayerInfo(i, contracts.MageAddress))
+      }
+
+      for (let i = 0; i < rangerCount; i++) {
+        promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
+      }
+
+      Promise.all(promiseDatas).then(res => {
+        heroNoWorkingData.value = res
+      })
+    })
+}
+
+async function batchGoWork(index = 0) {
+  if (noWorkingMultipleSelection.value[index]?.tokenId) {
+    ElMessage.info(`开始打工 ${noWorkingMultipleSelection.value[index].tokenId}`)
+    const tx = await contracts.MiningAddress.work(contractAddress.LinggongAddress, noWorkingMultipleSelection.value[index].tokenId)
+    await tx.wait()
+    ElMessage.success(`已开始打工 ${noWorkingMultipleSelection.value[index]?.tokenId}`)
+    index++
+    batchGoWork(index)
+  } else {
+    ElMessage.success(`批量打工完成`)
+    getCardsNotWork()
+  }
+}
+
+getCardsNotWork()
 initData()
 </script>
 

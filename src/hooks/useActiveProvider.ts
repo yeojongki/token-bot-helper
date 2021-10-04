@@ -2,6 +2,7 @@ import { ChainId } from '@pancakeswap/sdk'
 import { providers, Wallet } from 'ethers'
 import { effect } from 'vue'
 import { useUserStore } from '@/store/user'
+import { defaultRpc } from '@/constants'
 
 let provider: null | providers.BaseProvider = null
 let wallet: null | Wallet = null
@@ -35,7 +36,7 @@ export function setProvider(url: string) {
  */
 export function useActiveProvider() {
   if (!provider) {
-    setProvider('https://bsc-dataseed.binance.org')
+    setProvider(defaultRpc)
   }
 
   if (!wallet) {

@@ -1,4 +1,6 @@
-import { ChainId, JSBI, Percent, Token, WETH } from '@pancakeswap/sdk'
+import { ChainId, JSBI, Percent, WETH } from '@pancakeswap/sdk'
+
+export const defaultRpc = 'https://bsc-dataseed.binance.org'
 
 export const AddressZero = '0x0000000000000000000000000000000000000000'
 

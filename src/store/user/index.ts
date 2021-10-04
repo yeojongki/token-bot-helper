@@ -6,6 +6,7 @@ import { getFromStorage, setToStorage } from '@/utils/storage'
 import { providers, Wallet } from 'ethers'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { defaultRpc } from '@/constants'
 
 export interface TokenPriceMap {
   [chainId: number]: {
@@ -13,10 +14,17 @@ export interface TokenPriceMap {
   }
 }
 
-const currentTimestamp = () => new Date().getTime()
+export interface TokenSortEvent {
+  moved: {
+    element: TokenWithPrice
+    newIndex: number
+    oldIndex: number
+  }
+}
+
+// const currentTimestamp = () => new Date().getTime()
 
 const namespace = 'user'
-const defaultRpc = 'https://bsc-dataseed1.defibit.io'
 
 let provider = new providers.JsonRpcProvider(defaultRpc)
 let wallet = null as Wallet | null
@@ -25,7 +33,7 @@ export const useUserStore = defineStore({
   id: namespace,
   state: () => ({
     chainId: ChainId.MAINNET,
-    timestamp: currentTimestamp(),
+    // timestamp: currentTimestamp(),
     /**
      * 私钥
      */
@@ -43,7 +51,7 @@ export const useUserStore = defineStore({
     rpcList: [
       // import.meta.env.VITE_RPC_NODE,
       defaultRpc,
-      'https://bsc-dataseed.binance.org',
+      'https://bsc-dataseed1.defibit.io',
       'https://bsc-dataseed3.binance.org',
       'https://bsc-dataseed1.ninicoin.io',
     ],
@@ -71,7 +79,9 @@ export const useUserStore = defineStore({
     userAddedTokens: (state) => {
       const chainId = state.chainId
       if (!chainId) return []
-      return Object.values(state.tokens?.[chainId] ?? {})
+      return Object.values(state.tokens?.[chainId] ?? {}).sort(
+        (a, b) => a.sort! - b.sort!,
+      )
     },
     activeProvider: () => ({
       chainId: ChainId.MAINNET,
@@ -112,15 +122,22 @@ export const useUserStore = defineStore({
       this.privateKey = privateKey
     },
     /**
+     * 将当前 token 储存到 localStorage 中
+     */
+    setTokensToStorage() {
+      setToStorage(namespace, 'tokens', this.tokens)
+    },
+    /**
      * 增加 token 到用户 token 列表中
      * @param token
      */
     addToken(token: TokenWithPrice) {
       if (!this.tokens[token.chainId][token.address]) {
+        // 设置排序
+        token.sort = this.userAddedTokens.length
         this.tokens[token.chainId][token.address] = token
 
-        setToStorage(namespace, 'tokens', this.tokens)
-        this.timestamp = currentTimestamp()
+        this.setTokensToStorage()
       }
     },
     /**
@@ -136,8 +153,7 @@ export const useUserStore = defineStore({
     }) {
       delete this.tokens[chainId][address]
 
-      setToStorage(namespace, 'tokens', this.tokens)
-      this.timestamp = currentTimestamp()
+      this.setTokensToStorage()
     },
     /**
      * 切换跳过观察 token
@@ -152,8 +168,8 @@ export const useUserStore = defineStore({
     }) {
       this.tokens[chainId][address].skipWatch =
         !this.tokens[chainId][address].skipWatch
-      setToStorage(namespace, 'tokens', this.tokens)
-      this.timestamp = currentTimestamp()
+
+      this.setTokensToStorage()
     },
     /**
      * 更新用户 token 列表中的数据
@@ -171,8 +187,21 @@ export const useUserStore = defineStore({
       this.tokens[chainId] = this.tokens[chainId] || {}
       if (this.tokens[chainId][address]) {
         this.tokens[chainId][address].price = price
-        this.timestamp = currentTimestamp()
       }
+    },
+    /**
+     * token 排序
+     * @param param0
+     */
+    handleTokenSort({ moved: { newIndex, oldIndex } }: TokenSortEvent) {
+      const { address: oldAddress, sort: oldSort } =
+        this.userAddedTokens[oldIndex]
+      const { address: newAddress, sort: newSort } =
+        this.userAddedTokens[newIndex]
+      this.tokens[ChainId.MAINNET][oldAddress].sort = newSort
+      this.tokens[ChainId.MAINNET][newAddress].sort = oldSort
+
+      this.setTokensToStorage()
     },
   },
 })

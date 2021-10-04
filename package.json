@@ -15,7 +15,8 @@
     "normalize.css": "^8.0.1",
     "pinia": "^2.0.0-rc.9",
     "vue": "^3.2.6",
-    "vue-router": "4"
+    "vue-router": "4",
+    "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.5",
