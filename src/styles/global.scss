@@ -37,6 +37,14 @@ li {
   text-align: right;
 }
 
+.text-sm {
+  font-size: 14px;
+}
+
+.text-gray {
+  color: #bbbbbb;
+}
+
 .w-full {
   width: 100%;
 }
@@ -59,6 +67,10 @@ li {
 
 .mt-20 {
   margin-top: 20px;
+}
+
+.mb-20 {
+  margin-bottom: 20px;
 }
 
 .mr-20 {
