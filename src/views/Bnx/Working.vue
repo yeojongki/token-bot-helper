@@ -5,7 +5,9 @@
         <div>打工列表 ({{ workingList.length }})</div>
         <div class="text-right">
           <div>总收益约 ${{ totalRewards }}</div>
-          <div class="text-sm text-gray">(bnx: ${{ bnxStore.bnxPrice }} / gold: ${{ bnxStore.goldPrice }})</div>
+          <div
+            class="text-sm text-gray"
+          >(bnx: ${{ bnxStore.bnxPrice }} / gold: ${{ bnxStore.goldPrice }})</div>
         </div>
       </div>
     </template>
@@ -39,7 +41,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="role" label="角色"></el-table-column>
-      <el-table-column prop="level" sortable label="等级" :width="80"></el-table-column>
+      <el-table-column prop="level" sortable label="等级" :width="80">
+        <template #default="{ row }">
+          <div>lv. {{ row.level }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="income" sortable label="收益"></el-table-column>
       <!-- <el-table-column prop="income" sortable label="区块数"></el-table-column> -->
       <el-table-column prop="strength" sortable label="力量"></el-table-column>
@@ -76,7 +82,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="role" label="角色"></el-table-column>
-      <el-table-column prop="level" sortable label="等级" :width="80"></el-table-column>
+      <el-table-column prop="level" sortable label="等级" :width="80">
+        <template #default="{ row }">
+          <div>lv. {{ row.level }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="strength" sortable label="力量"></el-table-column>
       <el-table-column prop="agility" sortable label="敏捷"></el-table-column>
       <el-table-column prop="constitution" sortable label="体质"></el-table-column>

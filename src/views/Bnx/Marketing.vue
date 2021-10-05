@@ -64,7 +64,11 @@
       <el-table-column prop="name" label="标题"></el-table-column>
       <el-table-column prop="role" label="角色"></el-table-column>
       <el-table-column prop="price" sortable label="价格"></el-table-column>
-      <el-table-column prop="level" sortable label="等级" :width="80"></el-table-column>
+      <el-table-column prop="level" sortable label="等级" :width="80">
+        <template #default="{ row }">
+          <div>lv. {{ row.level }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="total" sortable label="总属性"></el-table-column>
       <!-- <el-table-column prop="income" sortable label="收益"></el-table-column> -->
       <!-- <el-table-column prop="income" sortable label="区块数"></el-table-column> -->
