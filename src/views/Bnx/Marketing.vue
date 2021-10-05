@@ -13,10 +13,15 @@
         <div class="flex items-center">
           <div class="flex items-center mr-10">
             <div class="mr-10">刷新间隔:</div>
-            <el-input-number v-model="getListInterval" :step-strictly="true" :step="100"></el-input-number>
+            <el-input-number
+              @change="handleIntervalChange"
+              v-model="getListInterval"
+              :step-strictly="true"
+              :step="100"
+            ></el-input-number>
           </div>
           <el-button
-            @click="toggleShouldWatch"
+            @click="toggleShouldWatch()"
             :type="watchClosed ? 'success' : 'info'"
           >{{ watchClosed ? '监听中' : '已关闭监听' }}</el-button>
         </div>
@@ -211,10 +216,19 @@ async function buyPlayer(orderId: string, price: number) {
 }
 
 /**
- * 切换监听
+ * 间隔修改时重新开启定时器
  */
-function toggleShouldWatch() {
-  if (watchClosed.value) {
+function handleIntervalChange() {
+  toggleShouldWatch(true)
+  toggleShouldWatch(false)
+}
+
+/**
+ * 切换监听
+ * @param closed 是否关闭
+ */
+function toggleShouldWatch(closed?: boolean) {
+  if (watchClosed.value || closed) {
     window.clearInterval(watchClosed.value)
     setWatchClosed(null as any)
   } else {
