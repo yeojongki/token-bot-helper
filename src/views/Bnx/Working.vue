@@ -46,6 +46,11 @@
           <div>lv. {{ row.level }}</div>
         </template>
       </el-table-column>
+      <el-table-column prop="isAdvance" sortable label="合格">
+        <template #default="{ row }">
+          <div>{{ row.isAdvance ? '✅' : '❌' }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="income" sortable label="收益"></el-table-column>
       <!-- <el-table-column prop="income" sortable label="区块数"></el-table-column> -->
       <el-table-column prop="strength" sortable label="力量"></el-table-column>
@@ -87,6 +92,11 @@
           <div>lv. {{ row.level }}</div>
         </template>
       </el-table-column>
+      <el-table-column prop="isAdvance" sortable label="合格">
+        <template #default="{ row }">
+          <div>{{ row.isAdvance ? '✅' : '❌' }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="strength" sortable label="力量"></el-table-column>
       <el-table-column prop="agility" sortable label="敏捷"></el-table-column>
       <el-table-column prop="constitution" sortable label="体质"></el-table-column>
@@ -111,7 +121,7 @@ import { computed, ref } from 'vue';
 import type { Ref } from 'vue'
 import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults';
 import { useRef } from '@/hooks/useRef';
-import { contractAddress, getContracts, roleType } from './common';
+import { contractAddress, getContracts, roleType, checkIsAdvancePlayer } from './common';
 import type { Hero, WorkingHero } from './common';
 import copyText from '@/utils/copyText';
 import { forEach, reject } from 'lodash';
@@ -207,6 +217,7 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
     intelligence: Number(playInfo[0][4]),
     spirit: Number(playInfo[0][5]),
     level: Number(playInfo[0][6]),
+    isAdvance: checkIsAdvancePlayer(playInfo),
     role: roleType[playInfo[1] as keyof typeof roleType],
     income: Number(utils.formatEther(income)),
   }
@@ -229,6 +240,7 @@ async function getPlayerInfo(index: number, contract: Contract) {
     spirit: Number(playInfo[0][5]),
     level: Number(playInfo[0][6]),
     role: roleType[playInfo[1] as keyof typeof roleType],
+    isAdvance: checkIsAdvancePlayer(playInfo)
   }
 }
 

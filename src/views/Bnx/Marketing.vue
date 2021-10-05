@@ -69,6 +69,11 @@
           <div>lv. {{ row.level }}</div>
         </template>
       </el-table-column>
+      <el-table-column prop="isAdvance" sortable label="合格">
+        <template #default="{ row }">
+          <div>{{ row.isAdvance ? '✅' : '❌' }}</div>
+        </template>
+      </el-table-column>
       <el-table-column prop="total" sortable label="总属性"></el-table-column>
       <!-- <el-table-column prop="income" sortable label="收益"></el-table-column> -->
       <!-- <el-table-column prop="income" sortable label="区块数"></el-table-column> -->
@@ -96,7 +101,7 @@ import { reactive, ref } from 'vue';
 import type { Ref } from 'vue'
 import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults';
 import { useRef } from '@/hooks/useRef';
-import { contractAddress, getContracts, roleType } from './common';
+import { checkIsAdvancePlayer, contractAddress, getContracts, roleType } from './common';
 import type { Hero, WorkingHero } from './common';
 import { get } from '@/utils/request';
 import { formatEther } from '@ethersproject/units';
@@ -162,7 +167,7 @@ async function getList(page = 1, options?: object) {
     const { code, data } = await get(`https://www.binaryx.pro/getSales`, params)
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
-      marketList.value = items.map((item: any) => {
+      marketList.value = items.map((item: Hero & { price: number } & Record<string, any>) => {
         // 价格
         item.price = Number(utils.formatEther(item.price))
 
@@ -195,6 +200,20 @@ async function getList(page = 1, options?: object) {
 
         // 角色
         item.role = roleType[item.career_address]
+
+        // 高级工
+        item.isAdvance = checkIsAdvancePlayer([
+          [
+            item.strength,
+            item.agility,
+            item.constitution,
+            item.willpower,
+            item.intelligence,
+            item.spirit,
+            item.level
+          ],
+          item.career_address
+        ])
         return item
       })
     }

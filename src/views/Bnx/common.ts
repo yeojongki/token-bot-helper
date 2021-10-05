@@ -16,6 +16,10 @@ export interface Hero {
   spirit: Number
   level: Number
   role: string
+  /**
+   * 属性能否满足打高级工作
+   */
+  isAdvance: boolean
 }
 
 export interface WorkingHero extends Omit<Hero, 'workType'> {
@@ -29,13 +33,21 @@ export const contractAddress = {
   NewMiningAddress: '0x698E165F2897e4daC68671c4cDFf337bbC543767',
   BscAddress: '0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97',
   NewtokenAddress: '0xb3a6381070B1a15169DEA646166EC0699fDAeA79',
-  // 战士
+  /**
+   * 战士
+   */
   WarriorAddress: '0x22F3E436dF132791140571FC985Eb17Ab1846494',
-  // 盗贼
+  /**
+   * 盗贼
+   */
   RobberAddress: '0xaF9A274c9668d68322B0dcD9043D79Cd1eBd41b3',
-  // 法师
+  /**
+   * 法师
+   */
   MageAddress: '0xC6dB06fF6e97a6Dc4304f7615CdD392a9cF13F44',
-  // 游侠
+  /**
+   * 游侠
+   */
   RangerAddress: '0xF31913a9C8EFE7cE7F08A1c08757C166b572a937',
   /**
    * 普通零工工作
@@ -137,4 +149,47 @@ export const roleType = {
   [contractAddress.RobberAddress]: '盗贼',
   [contractAddress.MageAddress]: '法师',
   [contractAddress.RangerAddress]: '游侠',
+}
+
+/**
+ * 高级角色主属性最低
+ */
+const MAIN_PROP_MIN = 85
+
+/**
+ * 高级角色副属性最低
+ */
+const SECOND_PROP_MIN = 60
+
+/**
+ * 是否为高级角色
+ */
+export function checkIsAdvancePlayer(playInfo: any[]): boolean {
+  const [
+    strength,
+    agility,
+    constitution,
+    willpower,
+    intelligence,
+    spirit,
+    level,
+  ] = playInfo[0].map(Number)
+
+  // 判断角色
+  switch (playInfo[1]) {
+    case contractAddress.WarriorAddress:
+      return strength > MAIN_PROP_MIN && constitution > SECOND_PROP_MIN
+
+    case contractAddress.RobberAddress:
+      return agility > MAIN_PROP_MIN && strength > SECOND_PROP_MIN
+
+    case contractAddress.MageAddress:
+      return intelligence > MAIN_PROP_MIN && spirit > SECOND_PROP_MIN
+
+    case contractAddress.RangerAddress:
+      return strength > MAIN_PROP_MIN && agility > SECOND_PROP_MIN
+
+    default:
+      return false
+  }
 }
