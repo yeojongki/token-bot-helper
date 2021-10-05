@@ -31,34 +31,7 @@
       :summary-method="getIncomeSummaries"
       :default-sort="{ prop: 'income', order: 'descending' }"
     >
-      <!-- <el-table-column type="selection" width="55" /> -->
-      <el-table-column prop="tokenId" label="Token ID" :width="100">
-        <template #default="{ row }">
-          <div
-            class="id-column"
-            @click="copyId(row.tokenId)"
-          >{{ row.tokenId.slice(0, 4) }}...{{ row.tokenId.slice(-4) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="role" label="角色"></el-table-column>
-      <el-table-column prop="level" sortable label="等级" :width="80">
-        <template #default="{ row }">
-          <div>lv. {{ row.level }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="isAdvance" sortable label="合格">
-        <template #default="{ row }">
-          <div>{{ row.isAdvance ? '✅' : '❌' }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="income" sortable label="收益"></el-table-column>
-      <!-- <el-table-column prop="income" sortable label="区块数"></el-table-column> -->
-      <el-table-column prop="strength" sortable label="力量"></el-table-column>
-      <el-table-column prop="agility" sortable label="敏捷"></el-table-column>
-      <el-table-column prop="constitution" sortable label="体质"></el-table-column>
-      <el-table-column prop="willpower" sortable label="意志"></el-table-column>
-      <el-table-column prop="intelligence" sortable label="智力"></el-table-column>
-      <el-table-column prop="spirit" sortable label="精神"></el-table-column>
+      <props-column :is-working="true"></props-column>
       <!-- <el-table-column label="操作">
         <template #default="{ row }">
           <el-button type="primary" size="small" @click="getAwardByTokenId(row.tokenId)">获取收益</el-button>
@@ -77,37 +50,7 @@
       @selection-change="noWorkingSelectionChange"
     -->
     <el-table height="500" :data="noWorkingList" :border="true" :show-summary="true">
-      <!-- <el-table-column type="selection" width="55" /> -->
-      <el-table-column prop="tokenId" label="Token ID" :width="100">
-        <template #default="{ row }">
-          <div
-            class="id-column"
-            @click="copyId(row.tokenId)"
-          >{{ row.tokenId.slice(0, 4) }}...{{ row.tokenId.slice(-4) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="role" label="角色"></el-table-column>
-      <el-table-column prop="level" sortable label="等级" :width="80">
-        <template #default="{ row }">
-          <div>lv. {{ row.level }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="isAdvance" sortable label="合格">
-        <template #default="{ row }">
-          <div>{{ row.isAdvance ? '✅' : '❌' }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="strength" sortable label="力量"></el-table-column>
-      <el-table-column prop="agility" sortable label="敏捷"></el-table-column>
-      <el-table-column prop="constitution" sortable label="体质"></el-table-column>
-      <el-table-column prop="willpower" sortable label="意志"></el-table-column>
-      <el-table-column prop="intelligence" sortable label="智力"></el-table-column>
-      <el-table-column prop="spirit" sortable label="精神"></el-table-column>
-      <!-- <el-table-column label="操作">
-        <template #default="{ row }">
-          <el-button type="primary" size="small" @click="getAwardByTokenId(row.tokenId)">获取收益</el-button>
-        </template>
-      </el-table-column>-->
+      <props-column></props-column>
     </el-table>
   </el-card>
 </template>
@@ -127,6 +70,7 @@ import copyText from '@/utils/copyText';
 import { forEach, reject } from 'lodash';
 import AsyncButton from '@/components/AsyncButton/index.vue'
 import { useBnxStore } from '@/store/bnx';
+import PropsColumn from './components/PropsColumn.vue';
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
@@ -181,13 +125,6 @@ const workingSelection = ref<WorkingHero[]>([])
  */
 const workingSelectionChange = (val: WorkingHero[]) => {
   workingSelection.value = val
-}
-
-/**
- * 复制 token ID
- */
-function copyId(id: string) {
-  copyText(id)
 }
 
 /**

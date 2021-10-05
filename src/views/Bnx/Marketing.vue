@@ -55,34 +55,9 @@
       :border="true"
       @selection-change="selectionChange"
     >
-      <el-table-column type="selection" width="55" />
-      <el-table-column prop="tokenId" label="Token ID" :width="100">
-        <template #default="{ row }">
-          <div class="id-column">{{ row.tokenId.slice(0, 4) }}...{{ row.tokenId.slice(-4) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="name" label="标题"></el-table-column>
-      <el-table-column prop="role" label="角色"></el-table-column>
-      <el-table-column prop="price" sortable label="价格"></el-table-column>
-      <el-table-column prop="level" sortable label="等级" :width="80">
-        <template #default="{ row }">
-          <div>lv. {{ row.level }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="isAdvance" sortable label="合格">
-        <template #default="{ row }">
-          <div>{{ row.isAdvance ? '✅' : '❌' }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column prop="total" sortable label="总属性"></el-table-column>
-      <!-- <el-table-column prop="income" sortable label="收益"></el-table-column> -->
-      <!-- <el-table-column prop="income" sortable label="区块数"></el-table-column> -->
-      <el-table-column prop="strength" sortable label="力量"></el-table-column>
-      <el-table-column prop="agility" sortable label="敏捷"></el-table-column>
-      <el-table-column prop="constitution" sortable label="体质"></el-table-column>
-      <el-table-column prop="willpower" sortable label="意志"></el-table-column>
-      <el-table-column prop="intelligence" sortable label="智力"></el-table-column>
-      <el-table-column prop="spirit" sortable label="精神"></el-table-column>
+      <!-- 封装属性列 -->
+      <props-column :is-marketing="true"></props-column>
+
       <el-table-column prop="seller" label="卖家">
         <template #default="{ row }">
           <div class="id-column">{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
@@ -107,10 +82,12 @@ import { get } from '@/utils/request';
 import { formatEther } from '@ethersproject/units';
 import SaleNewABI from './abi/saleNew'
 import saleNew from './abi/saleNew';
-import { userInfo } from 'os';
 import { withPoll } from '@/utils';
+import PropsColumn from './components/PropsColumn.vue';
+import { useBnxStore } from '@/store/bnx';
 
 const { wallet } = useActiveProvider()
+const bnxStore = useBnxStore()
 const newSaleAddress = "0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F"
 const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 
@@ -118,7 +95,9 @@ const getListInterval = ref(2200)
 const [watchClosed, setWatchClosed] = useRef<NodeJS.Timeout>(undefined as any)
 const marketList = ref([])
 
-
+/**
+ * 正在购买的角色 token ID map
+ */
 const currentBuying: Record<string, boolean> = {}
 
 /**
@@ -144,6 +123,14 @@ const autoBuy = reactive({
 const selection = ref<WorkingHero[]>([])
 
 /**
+ * 交易代币 map
+ */
+const payTokenTypeMap = {
+  [bnxStore.bnxAddress]: 'BNX',
+  [bnxStore.goldAddress]: 'GOLD'
+}
+
+/**
  * 列表勾选事件
  */
 function selectionChange(val: WorkingHero[]) {
@@ -157,7 +144,7 @@ async function getList(page = 1, options?: object) {
   try {
     const params = {
       page: 1,
-      page_size: 30,
+      page_size: 100,
       status: 'selling',
       name: '',
       sort: 'time',
@@ -198,8 +185,12 @@ async function getList(page = 1, options?: object) {
         item.spirit = item.charm
         delete item.charm
 
+        // 角色地址
+        item.roleAddress = item.career_address
+        delete item.career_address
+
         // 角色
-        item.role = roleType[item.career_address]
+        item.role = roleType[item.roleAddress]
 
         // 高级工
         item.isAdvance = checkIsAdvancePlayer([
@@ -212,8 +203,17 @@ async function getList(page = 1, options?: object) {
             item.spirit,
             item.level
           ],
-          item.career_address
+          item.roleAddress
         ])
+
+        // 交易代币类型
+        item.payType = payTokenTypeMap[item.pay_addr] ?? '其他'
+        item.usdPrice = item.payType === 'BNX'
+          ? `$${(bnxStore.bnxPrice * item.price).toFixed(2)}`
+          : item.payType === 'GOLD'
+            ? `$${(bnxStore.goldPrice * item.price).toFixed(2)}`
+            : '未知'
+
         return item
       })
     }
@@ -255,6 +255,8 @@ function toggleShouldWatch(closed?: boolean) {
     window.clearInterval(watchClosed.value)
     setWatchClosed(null as any)
   } else {
+    // 更新 bnx gold 价格
+    bnxStore.updateBnxAndGoldPrice()
     setWatchClosed(setInterval(() => getList(), getListInterval.value))
   }
 }
@@ -265,4 +267,3 @@ toggleShouldWatch()
 <style lang="scss" scoped>
 @import "./style.scss";
 </style>
-  
