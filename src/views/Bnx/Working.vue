@@ -155,6 +155,7 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
     spirit: Number(playInfo[0][5]),
     level: Number(playInfo[0][6]),
     isAdvance: checkIsAdvancePlayer(playInfo),
+    roleAddress: playInfo[1],
     role: roleType[playInfo[1] as keyof typeof roleType],
     income: Number(utils.formatEther(income)),
   }
@@ -176,6 +177,7 @@ async function getPlayerInfo(index: number, contract: Contract) {
     intelligence: Number(playInfo[0][4]),
     spirit: Number(playInfo[0][5]),
     level: Number(playInfo[0][6]),
+    roleAddress: playInfo[1],
     role: roleType[playInfo[1] as keyof typeof roleType],
     isAdvance: checkIsAdvancePlayer(playInfo)
   }

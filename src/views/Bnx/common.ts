@@ -15,7 +15,14 @@ export interface Hero {
   intelligence: Number
   spirit: Number
   level: Number
+  /**
+   * 角色中文
+   */
   role: string
+  /**
+   * 角色合约地址
+   */
+  roleAddress: string
   /**
    * 属性能否满足打高级工作
    */

@@ -59,7 +59,7 @@
     <template #default="{ row }">
       <div
         :class="{ 'advance-main-prop': row.isAdvance && row.roleAddress === RobberAddress }"
-      >{{ row.strength }}</div>
+      >{{ row.agility }}</div>
     </template>
   </el-table-column>
 
@@ -67,7 +67,7 @@
     <template #default="{ row }">
       <div
         :class="{ 'advance-main-prop': row.isAdvance && row.roleAddress === MageAddress }"
-      >{{ row.strength }}</div>
+      >{{ row.intelligence }}</div>
     </template>
   </el-table-column>
 
