@@ -31,6 +31,7 @@ export interface Hero {
 
 export interface WorkingHero extends Omit<Hero, 'workType'> {
   income: number
+  incomeUsd: string
 }
 
 export const contractAddress = {

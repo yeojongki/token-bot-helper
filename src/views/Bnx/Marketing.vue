@@ -2,18 +2,29 @@
   <el-card class="page-bnx">
     <template #header>
       <div class="flex items-center justify-between">
-        <div class="flex">
+        <div class="flex items-center">
           <div>市场列表</div>
           <el-switch
             class="ml-10"
             v-model="autoBuy.open"
             :active-text="autoBuy.open ? '已开启自动购买' : '已关闭自动购买'"
           ></el-switch>
+          <div class="flex items-center ml-10">
+            <div class="mr-10">自动购买最低价:</div>
+            <el-input-number
+              size="small"
+              v-model="autoBuy.minPrice"
+              :step-strictly="true"
+              :step="0.01"
+            ></el-input-number>
+          </div>
         </div>
+
         <div class="flex items-center">
           <div class="flex items-center mr-10">
             <div class="mr-10">刷新间隔:</div>
             <el-input-number
+              size="small"
               @change="handleIntervalChange"
               v-model="getListInterval"
               :step-strictly="true"
@@ -21,9 +32,10 @@
             ></el-input-number>
           </div>
           <el-button
+            size="small"
             @click="toggleShouldWatch()"
-            :type="watchClosed ? 'success' : 'info'"
-          >{{ watchClosed ? '监听中' : '已关闭监听' }}</el-button>
+            :type="watchOpened ? 'success' : 'info'"
+          >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button>
         </div>
       </div>
     </template>
@@ -31,20 +43,26 @@
       <el-button :disabled="!selection.length" class="ml-10" type="primary" @click="batchBuy">批量购买</el-button>
     </div>-->
 
-    <div class="mb-20 flex items-center">
-      <div class="flex items-center ml-10">
-        <div class="mr-10">自动购买最低值:</div>
-        <el-input-number v-model="autoBuy.minPrice" :step-strictly="true" :step="0.01"></el-input-number>
+    <div class="mb-20 flex items-center justify-between">
+      <div class="flex items-center">
+        <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
+        <bnx-gold-price-balance class="ml-10"></bnx-gold-price-balance>
       </div>
+      <div class="flex">
+        <div class="flex items-center ml-10">
+          <div class="mr-10">Gas Price:</div>
+          <el-input-number size="small" v-model="autoBuy.gasPrice" :step-strictly="true" :step="1"></el-input-number>
+        </div>
 
-      <div class="flex items-center ml-10">
-        <div class="mr-10">Gas Price:</div>
-        <el-input-number v-model="autoBuy.gasPrice" :step-strictly="true" :step="1"></el-input-number>
-      </div>
-
-      <div class="flex items-center ml-10">
-        <div class="mr-10">Gas Limit:</div>
-        <el-input-number v-model="autoBuy.gasLimit" :step-strictly="true" :step="10000"></el-input-number>
+        <div class="flex items-center ml-10">
+          <div class="mr-10">Gas Limit:</div>
+          <el-input-number
+            size="small"
+            v-model="autoBuy.gasLimit"
+            :step-strictly="true"
+            :step="10000"
+          ></el-input-number>
+        </div>
       </div>
     </div>
 
@@ -57,12 +75,6 @@
     >
       <!-- 封装属性列 -->
       <props-column :is-marketing="true"></props-column>
-
-      <el-table-column prop="seller" label="卖家">
-        <template #default="{ row }">
-          <div class="id-column">{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
-        </template>
-      </el-table-column>
     </el-table>
   </el-card>
 </template>
@@ -85,6 +97,8 @@ import saleNew from './abi/saleNew';
 import { withPoll } from '@/utils';
 import PropsColumn from './components/PropsColumn.vue';
 import { useBnxStore } from '@/store/bnx';
+import AsyncButton from '@/components/AsyncButton/index.vue';
+import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue';
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
@@ -92,7 +106,7 @@ const newSaleAddress = "0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F"
 const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 
 const getListInterval = ref(2200)
-const [watchClosed, setWatchClosed] = useRef<NodeJS.Timeout>(undefined as any)
+const [watchOpened, setWatchOpened] = useRef<NodeJS.Timeout>(undefined as any)
 const marketList = ref([])
 
 /**
@@ -135,6 +149,11 @@ const payTokenTypeMap = {
  */
 function selectionChange(val: WorkingHero[]) {
   selection.value = val
+
+  if (watchOpened.value) {
+    // 停止刷新列表防止勾选重置
+    toggleShouldWatch(true)
+  }
 }
 
 /**
@@ -222,11 +241,21 @@ async function getList(page = 1, options?: object) {
   }
 }
 
+async function buySelected() {
+  console.log(selection.value);
+
+  selection.value.map(item => { })
+}
+
 /**
  * 购买角色
  */
 async function buyPlayer(orderId: string, price: number) {
-  ElMessage.info(`正在购买 ${orderId}, 价格为${price}`)
+  const buyingMsg = ElMessage({
+    type: 'info',
+    duration: 0,
+    message: `正在购买 ${orderId}, 价格为${price}`,
+  })
   const tx = await saleContractNew.buyPlayer(orderId, {
     gasLimit: autoBuy.gasLimit,
     gasPrice: utils.parseUnits(`${autoBuy.gasPrice}`, 'gwei'),
@@ -235,6 +264,8 @@ async function buyPlayer(orderId: string, price: number) {
 
   await tx.wait()
   console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
+
+  buyingMsg.close()
   ElMessage.success(`购买成功 ${orderId}, 价格为${price}`)
 }
 
@@ -251,13 +282,13 @@ function handleIntervalChange() {
  * @param closed 是否关闭
  */
 function toggleShouldWatch(closed?: boolean) {
-  if (watchClosed.value || closed) {
-    window.clearInterval(watchClosed.value)
-    setWatchClosed(null as any)
+  if (watchOpened.value || closed) {
+    window.clearInterval(watchOpened.value)
+    setWatchOpened(null as any)
   } else {
-    // 更新 bnx gold 价格
-    bnxStore.updateBnxAndGoldPrice()
-    setWatchClosed(setInterval(() => getList(), getListInterval.value))
+    // 更新 bnx gold 价格和余额
+    bnxStore.updateBnxAndGold()
+    setWatchOpened(setInterval(() => getList(), getListInterval.value))
   }
 }
 

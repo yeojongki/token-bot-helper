@@ -2,12 +2,12 @@
   <el-card class="page-bnx">
     <template #header>
       <div class="flex justify-between items-center">
-        <div>打工列表 ({{ workingList.length }})</div>
+        <div class="flex">
+          <div>打工列表 ({{ workingList.length }})</div>
+          <div class="ml-10 text-red">总收益 {{ totalRewards.gold }} ≈ ${{ totalRewards.goldUsdTotal }}</div>
+        </div>
         <div class="text-right">
-          <div>总收益约 ${{ totalRewards }}</div>
-          <div
-            class="text-sm text-gray"
-          >(bnx: ${{ bnxStore.bnxPrice }} / gold: ${{ bnxStore.goldPrice }})</div>
+          <bnx-gold-price-balance></bnx-gold-price-balance>
         </div>
       </div>
     </template>
@@ -22,13 +22,13 @@
     </div>
 
     <!-- @selection-change="workingSelectionChange" -->
+    <!-- :show-summary="true"
+    sum-text="合计"
+    :summary-method="getIncomeSummaries"-->
     <el-table
       height="500"
       :data="workingList"
       :border="true"
-      :show-summary="true"
-      sum-text="合计"
-      :summary-method="getIncomeSummaries"
       :default-sort="{ prop: 'income', order: 'descending' }"
     >
       <props-column :is-working="true"></props-column>
@@ -71,6 +71,7 @@ import { forEach, reject } from 'lodash';
 import AsyncButton from '@/components/AsyncButton/index.vue'
 import { useBnxStore } from '@/store/bnx';
 import PropsColumn from './components/PropsColumn.vue';
+import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue';
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
@@ -78,14 +79,17 @@ const [batchWorkingLoading, setBatchWorkingLoading] = useRef(false)
 
 // 更新 bnx & 金币价格
 const bnxStore = useBnxStore()
-bnxStore.updateBnxAndGoldPrice()
+bnxStore.updateBnxAndGold()
 
 /**
  * 总收益 $
  */
 const totalRewards = computed(() => {
-  const all = workingList.value.reduce((prev, next) => prev + next.income, 0)
-  return (all * bnxStore.goldPrice).toFixed(2)
+  const gold = workingList.value.reduce((prev, next) => prev + next.income, 0)
+  return {
+    gold: gold.toFixed(2),
+    goldUsdTotal: (gold * bnxStore.goldPrice).toFixed(2),
+  }
 })
 
 /**
@@ -145,6 +149,7 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
     income = await contracts.BookmangerAddress.getIncome(playInfo[0], startTime, endBlock)
   }
 
+  income = Number(utils.formatEther(income))
   return {
     tokenId,
     strength: Number(playInfo[0][0]),
@@ -157,7 +162,8 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
     isAdvance: checkIsAdvancePlayer(playInfo),
     roleAddress: playInfo[1],
     role: roleType[playInfo[1] as keyof typeof roleType],
-    income: Number(utils.formatEther(income)),
+    income,
+    incomeUsd: (income * bnxStore.goldPrice).toFixed(2)
   }
 }
 
@@ -334,7 +340,7 @@ function getPlayersNoWorking() {
  * @deprecated 有问题先不用
  */
 async function _batchWork() {
-  const nonce = await provider.getTransactionCount(account)
+  const nonce = await provider.getTransactionCount(account, 'pending')
 
   const helper = (tokenId: string, index: number) => new Promise<void>((resolve, reject) => {
     contracts.MiningAddress.work(
