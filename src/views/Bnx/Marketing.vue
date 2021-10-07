@@ -99,13 +99,14 @@ import PropsColumn from './components/PropsColumn.vue';
 import { useBnxStore } from '@/store/bnx';
 import AsyncButton from '@/components/AsyncButton/index.vue';
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue';
+import { useNonceStore } from '@/store/nonce';
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
 const newSaleAddress = "0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F"
 const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 
-const getListInterval = ref(2200)
+const getListInterval = ref(2500)
 const [watchOpened, setWatchOpened] = useRef<NodeJS.Timeout>(undefined as any)
 const marketList = ref([])
 
@@ -125,7 +126,7 @@ const autoBuy = reactive({
   /**
    * 购买最低价
    */
-  minPrice: 0.43,
+  minPrice: 0.4,
 
   gasLimit: 530000,
   gasPrice: 6,
@@ -173,6 +174,11 @@ async function getList(page = 1, options?: object) {
     const { code, data } = await get(`https://www.binaryx.pro/getSales`, params)
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
+      // 关闭监听之后不刷新列表
+      if (!watchOpened.value) {
+        return
+      }
+
       marketList.value = items.map((item: Hero & { price: number } & Record<string, any>) => {
         // 价格
         item.price = Number(utils.formatEther(item.price))
@@ -234,35 +240,42 @@ async function getList(page = 1, options?: object) {
             : '未知'
 
         return item
-      })
+      }).sort((a: any, b: any) => a.block_number - b.block_number)
     }
   } finally {
 
   }
 }
 
+/**
+ * 购买选中角色
+ */
 async function buySelected() {
-  console.log(selection.value);
-
-  selection.value.map(item => { })
+  selection.value.map(item => {
+    buyPlayer(item.order_id, item.price)
+  })
 }
 
 /**
  * 购买角色
  */
 async function buyPlayer(orderId: string, price: number) {
+  const message = `正在购买 ${orderId}, 价格为${price}`
   const buyingMsg = ElMessage({
     type: 'info',
     duration: 0,
-    message: `正在购买 ${orderId}, 价格为${price}`,
+    message,
   })
+  console.log(message)
+
   const tx = await saleContractNew.buyPlayer(orderId, {
     gasLimit: autoBuy.gasLimit,
     gasPrice: utils.parseUnits(`${autoBuy.gasPrice}`, 'gwei'),
-    nonce: null,
   })
+  console.log({ tx })
 
   await tx.wait()
+
   console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
 
   buyingMsg.close()

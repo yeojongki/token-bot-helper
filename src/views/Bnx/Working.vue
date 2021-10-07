@@ -18,10 +18,12 @@
       </div>
 
       <!-- :disabled="!workingSelection.length" -->
-      <el-button class="ml-10" type="primary" @click="batchGetAwards(0)">批量获取受益</el-button>
+      <div>
+        <el-button class="ml-10" type="primary" @click="batchGetAwards(0)">批量获取受益</el-button>
+        <el-button class="ml-10" type="primary" @click="batchQuitWork(0)">批量退出工作</el-button>
+      </div>
     </div>
 
-    <!-- @selection-change="workingSelectionChange" -->
     <!-- :show-summary="true"
     sum-text="合计"
     :summary-method="getIncomeSummaries"-->
@@ -30,11 +32,12 @@
       :data="workingList"
       :border="true"
       :default-sort="{ prop: 'income', order: 'descending' }"
+      @selection-change="workingSelectionChange"
     >
       <props-column :is-working="true"></props-column>
       <!-- <el-table-column label="操作">
         <template #default="{ row }">
-          <el-button type="primary" size="small" @click="getAwardByTokenId(row.tokenId)">获取收益</el-button>
+          <el-button type="primary" size="small" @click="getAwardByTokenId(row.tokenId, row.isAdvanceJob)">获取收益</el-button>
         </template>
       </el-table-column>-->
     </el-table>
@@ -46,10 +49,17 @@
       <el-button class="ml-10" type="primary" @click="batchGoWork(0)">批量打工</el-button>
     </div>
 
-    <!-- 
+    <div class="flex mb-20">
+      <el-input v-model="transferTo" placeholder="请输入将要转移到的钱包地址" class="mr-10"></el-input>
+      <el-button :disabled="transferTo.length !== 42" type="primary" @click="transferRole(0)">转移选中角色</el-button>
+    </div>
+
+    <el-table
       @selection-change="noWorkingSelectionChange"
-    -->
-    <el-table height="500" :data="noWorkingList" :border="true" :show-summary="true">
+      height="500"
+      :data="noWorkingList"
+      :border="true"
+    >
       <props-column></props-column>
     </el-table>
   </el-card>
@@ -58,13 +68,13 @@
 <script setup lang="ts">
 import { useActiveProvider } from '@/hooks/useActiveProvider';
 import { Contract } from '@ethersproject/contracts';
-import { ElCard, ElInputNumber, ElTable, ElTableColumn, ElButton, ElMessage, ElLoading, } from 'element-plus'
+import { ElCard, ElInputNumber, ElTable, ElTableColumn, ElInput, ElDivider, ElButton, ElMessage, ElLoading, ElAlert, ElMessageBox, } from 'element-plus'
 import { BigNumber, utils } from 'ethers';
 import { computed, ref } from 'vue';
 import type { Ref } from 'vue'
 import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults';
 import { useRef } from '@/hooks/useRef';
-import { contractAddress, getContracts, roleType, checkIsAdvancePlayer } from './common';
+import { contractAddress, getContracts, roleType, checkIsAdvancePlayer, getUpgradeCostBnx } from './common';
 import type { Hero, WorkingHero } from './common';
 import copyText from '@/utils/copyText';
 import { forEach, reject } from 'lodash';
@@ -72,6 +82,7 @@ import AsyncButton from '@/components/AsyncButton/index.vue'
 import { useBnxStore } from '@/store/bnx';
 import PropsColumn from './components/PropsColumn.vue';
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue';
+import { useNonceStore } from '@/store/nonce';
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
@@ -80,6 +91,11 @@ const [batchWorkingLoading, setBatchWorkingLoading] = useRef(false)
 // 更新 bnx & 金币价格
 const bnxStore = useBnxStore()
 bnxStore.updateBnxAndGold()
+
+/**
+ * 角色转移到的目标地址
+ */
+const transferTo = ref('')
 
 /**
  * 总收益 $
@@ -97,6 +113,17 @@ const totalRewards = computed(() => {
  */
 const workingList: Ref<WorkingHero[]> = ref([])
 
+/**
+ * 正在打工列表选中
+ */
+const workingSelection = ref<WorkingHero[]>([])
+
+/**
+ * 正在打工列表勾选事件
+ */
+const workingSelectionChange = (val: WorkingHero[]) => {
+  workingSelection.value = val
+}
 /**
  * 未打工列表
  */
@@ -120,19 +147,37 @@ const noWorkingSelectionChange = (val: Hero[]) => {
 const batcGetAwardsMin = ref(0)
 
 /**
- * 打工列表选中
+ * 获取角色基础信息
  */
-const workingSelection = ref<WorkingHero[]>([])
+function getPlayerBaseDetail(playInfo: any[]) {
+  const strength = Number(playInfo[0][0])
+  const agility = Number(playInfo[0][1])
+  const constitution = Number(playInfo[0][2])
+  const willpower = Number(playInfo[0][3])
+  const intelligence = Number(playInfo[0][4])
+  const spirit = Number(playInfo[0][5])
+  const level = Number(playInfo[0][6])
 
-/**
- * 打工列表勾选事件
- */
-const workingSelectionChange = (val: WorkingHero[]) => {
-  workingSelection.value = val
+  // 总
+  const total = strength + agility + constitution + willpower + intelligence + spirit
+
+  return {
+    strength,
+    agility,
+    constitution,
+    willpower,
+    intelligence,
+    spirit,
+    level: Number(playInfo[0][6]),
+    total,
+    isAdvance: checkIsAdvancePlayer(playInfo),
+    roleAddress: playInfo[1],
+    role: roleType[playInfo[1] as keyof typeof roleType],
+  }
 }
 
 /**
- * 获取打工详情
+ * 获取打工详情 (没做皇室守卫 & 军团士兵)
  */
 async function getWorkPlayerDetail(index: number, miningContract = contracts.MiningAddress): Promise<WorkingHero> {
   const tokenId = String(await miningContract.tokenOfOwnerByIndex(account, index))
@@ -140,6 +185,7 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
   const recWorkInfo = await miningContract.getPlayerWork(tokenId)
   const [workType, , startTime] = recWorkInfo
 
+  let isAdvanceJob = false
   let income = 0
   let endBlock = (await provider.getBlockNumber()) + ''
 
@@ -147,23 +193,28 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
     income = await contracts.LinggongAddress.getIncome(playInfo[0], startTime, endBlock)
   } else if (workType === contractAddress.BookmangerAddress) {
     income = await contracts.BookmangerAddress.getIncome(playInfo[0], startTime, endBlock)
+    isAdvanceJob = true
+  } else if (workType === contractAddress.BlacksmithAddress) {
+    income = await contracts.BlacksmithAddress.getIncome(playInfo[0], startTime, endBlock)
+    isAdvanceJob = true
+  } else if (workType === contractAddress.RangeworkAddress) {
+    income = await contracts.RangeworkAddress.getIncome(playInfo[0], startTime, endBlock)
+    isAdvanceJob = true
+  } else if (workType === contractAddress.HunterAddress) {
+    income = await contracts.HunterAddress.getIncome(playInfo[0], startTime, endBlock)
+    isAdvanceJob = true
   }
 
   income = Number(utils.formatEther(income))
+
+  const baseInfo = getPlayerBaseDetail(playInfo)
+
   return {
+    ...baseInfo,
     tokenId,
-    strength: Number(playInfo[0][0]),
-    agility: Number(playInfo[0][1]),
-    constitution: Number(playInfo[0][2]),
-    willpower: Number(playInfo[0][3]),
-    intelligence: Number(playInfo[0][4]),
-    spirit: Number(playInfo[0][5]),
-    level: Number(playInfo[0][6]),
-    isAdvance: checkIsAdvancePlayer(playInfo),
-    roleAddress: playInfo[1],
-    role: roleType[playInfo[1] as keyof typeof roleType],
     income,
-    incomeUsd: (income * bnxStore.goldPrice).toFixed(2)
+    incomeUsd: (income * bnxStore.goldPrice).toFixed(2),
+    isAdvanceJob
   }
 }
 
@@ -174,18 +225,11 @@ async function getPlayerInfo(index: number, contract: Contract) {
   const tokenId = String(await contract.tokenOfOwnerByIndex(account, index))
   const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(tokenId)
 
+  const baseInfo = getPlayerBaseDetail(playInfo)
+
   return {
+    ...baseInfo,
     tokenId,
-    strength: Number(playInfo[0][0]),
-    agility: Number(playInfo[0][1]),
-    constitution: Number(playInfo[0][2]),
-    willpower: Number(playInfo[0][3]),
-    intelligence: Number(playInfo[0][4]),
-    spirit: Number(playInfo[0][5]),
-    level: Number(playInfo[0][6]),
-    roleAddress: playInfo[1],
-    role: roleType[playInfo[1] as keyof typeof roleType],
-    isAdvance: checkIsAdvancePlayer(playInfo)
   }
 }
 
@@ -220,13 +264,16 @@ async function getWorkingPlayers() {
 /**
  * 获取单个角色奖励 (金币)
  */
-async function getAwardByTokenId(tokenId: string) {
+async function getAwardByTokenId(tokenId: string, isAdvanceJob: boolean) {
   try {
-    const tx = await contracts.MiningAddress.getAward(tokenId)
+    const tx = isAdvanceJob
+      ? await contracts.NewMiningAddress.getAward(tokenId)
+      : await contracts.MiningAddress.getAward(tokenId)
     await tx.wait()
     ElMessage.success("获取成功")
   } catch (error) {
     ElMessage.error('获取失败, 请重试')
+    console.log(error)
   }
 }
 
@@ -234,16 +281,17 @@ async function getAwardByTokenId(tokenId: string) {
  * 批量获取角色奖励
  */
 async function batchGetAwards(index = 0) {
-  if (workingList.value[index]?.tokenId) {
-    ElMessage.info(`开始获取 ${workingList.value[index]}`)
+  const item = workingSelection.value[index]
+  if (item?.tokenId) {
+    ElMessage.info(`开始获取 ${item.tokenId}`)
 
-    if (workingList.value[index].income > batcGetAwardsMin.value) {
-      await getAwardByTokenId(workingList.value[index].tokenId)
+    if (item.income > batcGetAwardsMin.value) {
+      await getAwardByTokenId(item.tokenId, item.isAdvanceJob)
 
       index++
       await batchGetAwards(index)
     } else {
-      ElMessage.info(`已跳过${workingList.value[index]}, 低于最低收益${batcGetAwardsMin.value}`)
+      ElMessage.info(`已跳过${item}, 低于最低收益${batcGetAwardsMin.value}`)
       index++
       await batchGetAwards(index)
     }
@@ -337,49 +385,6 @@ function getPlayersNoWorking() {
 // }
 
 /**
- * @deprecated 有问题先不用
- */
-async function _batchWork() {
-  const nonce = await provider.getTransactionCount(account, 'pending')
-
-  const helper = (tokenId: string, index: number) => new Promise<void>((resolve, reject) => {
-    contracts.MiningAddress.work(
-      contractAddress.LinggongAddress,
-      tokenId,
-      {
-        gasLimit: 430000,
-        gasPrice: utils.parseUnits(`${5}`, 'gwei'),
-        nonce: nonce + index
-      }
-    )
-      .then((tx: any) => {
-        console.log(tx)
-        tx.wait()
-          .then(() => {
-            // 不执行了 未知原因
-            console.log(`已完成${index}`)
-            ElMessage.success(`已完成${index}`)
-            resolve()
-          })
-          .catch((err: any) => {
-            console.log(err)
-            reject()
-          })
-      })
-      .catch((err: any) => {
-        console.log(err)
-        reject()
-      })
-  })
-
-  const promiseDatas: Promise<any>[] = noWorkingSelection.value.map((item, index) => helper(item.tokenId, index + 1))
-
-  await Promise.all(promiseDatas)
-  ElMessage.success(`批量打工完成`)
-}
-
-
-/**
  * 递归执行打工 (目前只做了获取最普通工作)
  */
 async function batchGoWork(index = 0) {
@@ -390,16 +395,93 @@ async function batchGoWork(index = 0) {
       noWorkingList.value[index].tokenId
     )
     await tx.wait()
-
-    ElMessage.success(`已开始打工 [${index}]`)
+    console.log(`已开始打工 [${index}]`)
     index++
 
     batchGoWork(index)
   } else {
     ElMessage.success(`批量打工完成`)
+    console.log(`批量打工完成`)
     // 刷新打工/未打工列表
     getPlayersNoWorking()
     getWorkingPlayers()
+  }
+}
+
+
+/**
+ * 实际调用转移选中角色执行
+ */
+async function transferHelper(contract: Contract, tokenId: string) {
+  const tx = await contract.transferFrom(
+    wallet.address,
+    transferTo.value,
+    tokenId,
+  )
+  await tx.wait()
+  ElMessage.success(`转移${tokenId}成功`)
+}
+
+/**
+ * 转移选中角色递归执行
+ */
+async function transferRole(index = 0) {
+  // await ElMessageBox.confirm(`确认转移 ${noWorkingList.value.length} 个角色到 ${transferTo.value} ?`)
+  // TODO 授权
+  // const approvedTx = await contracts.WarriorAddress.setApprovalForAll(contractAddress.NewMiningAddress, true)
+  // await approvedTx.wait()
+
+
+  if (noWorkingSelection.value[index]?.tokenId) {
+    const item = noWorkingSelection.value[index]
+    let contract: Contract | null = null
+
+    if (item.roleAddress === contractAddress.WarriorAddress) {
+      contract = contracts.WarriorAddress
+    } else if (item.roleAddress === contractAddress.MageAddress) {
+      contract = contracts.MageAddress
+    } else if (item.roleAddress === contractAddress.RangerAddress) {
+      contract = contracts.RangerAddress
+    } else if (item.roleAddress === contractAddress.RobberAddress) {
+      contract = contracts.RobberAddress
+    }
+
+    if (contract) {
+      transferHelper(contract, item.tokenId).then(() => {
+        index++
+        transferRole(index)
+      })
+    }
+  } else {
+    console.log('转移完成')
+    ElMessage({
+      type: 'success',
+      message: '转移完成'
+    })
+  }
+
+  // ElMessage({
+  //   type: 'info',
+  //   message: '已取消转移'
+  // })
+}
+
+
+async function quitWorkHelper(tokenId: string) {
+  const tx = await contracts.MiningAddress.quitWork(tokenId)
+  await tx.wait()
+  ElMessage.success(`${tokenId} 已经退出工作`)
+}
+
+function batchQuitWork(index = 0) {
+  if (workingSelection.value[index]?.tokenId) {
+    quitWorkHelper(workingSelection.value[index].tokenId)
+      .then(() => {
+        index++
+        batchQuitWork(index)
+      })
+  } else {
+    ElMessage.success('成功退出工作')
   }
 }
 

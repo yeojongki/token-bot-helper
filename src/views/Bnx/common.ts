@@ -8,13 +8,17 @@ import bookMangeABI from './abi/bookManage'
 
 export interface Hero {
   tokenId: string
-  strength: Number
-  agility: Number
-  constitution: Number
-  willpower: Number
-  intelligence: Number
-  spirit: Number
-  level: Number
+  strength: number
+  agility: number
+  constitution: number
+  willpower: number
+  intelligence: number
+  spirit: number
+  level: number
+  /**
+   * 总属性
+   */
+  total: number
   /**
    * 角色中文
    */
@@ -30,8 +34,13 @@ export interface Hero {
 }
 
 export interface WorkingHero extends Omit<Hero, 'workType'> {
+  [x: string]: any
   income: number
   incomeUsd: string
+  /**
+   * 当前是否在做高级工作
+   */
+  isAdvanceJob: boolean
 }
 
 export const contractAddress = {
@@ -64,7 +73,7 @@ export const contractAddress = {
   /**
    * 伐木工作 (限战士)
    */
-  blacksmithAddress: '0x3a4D27B77B253bdb9AFec082D8f5cDE5A4D713E1',
+  BlacksmithAddress: '0x3a4D27B77B253bdb9AFec082D8f5cDE5A4D713E1',
   /**
    * 打猎工作 (限游侠)
    */
@@ -121,7 +130,11 @@ export const getContracts = (wallet: Wallet) => ({
     workTypeABI,
     wallet,
   ),
-  // blacksmithAddress =
+  BlacksmithAddress: new Contract(
+    contractAddress.BlacksmithAddress,
+    bookMangeABI,
+    wallet,
+  ),
   HunterAddress: new Contract(
     contractAddress.HunterAddress,
     bookMangeABI,
@@ -200,4 +213,50 @@ export function checkIsAdvancePlayer(playInfo: any[]): boolean {
     default:
       return false
   }
+}
+
+/**
+ * 升级消耗 gold bnx 数量
+ * 0 为 gold 数量
+ * 1 为 bnx 数量
+ */
+export const upgradeCostPriceMap: Record<number, number[]> = {
+  2: [20000, 0],
+  3: [50000, 0],
+  4: [150000, 0],
+  5: [450000, 0],
+  6: [1000000, 50],
+  7: [2000000, 100],
+}
+
+/**
+ * 获取升级消耗的 BNX
+ * @param level
+ * @param goldPrice
+ * @param bnxPrice
+ * @returns
+ */
+export function getUpgradeCostBnx(
+  level: number,
+  goldPrice: number,
+  bnxPrice: number,
+) {
+  if (!level || level <= 1) {
+    return '0'
+  }
+
+  let goldCost = 0
+  let bnxCost = 0
+
+  const arr = upgradeCostPriceMap[level]
+
+  if (arr[0]) {
+    goldCost = arr[0] * goldPrice
+  }
+
+  if (arr[1]) {
+    bnxCost = arr[1] * bnxPrice
+  }
+
+  return ((goldCost / (bnxCost || 1) + bnxCost) / bnxPrice).toFixed(2)
 }

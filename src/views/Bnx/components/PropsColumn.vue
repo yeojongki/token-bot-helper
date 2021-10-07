@@ -21,6 +21,10 @@
   <el-table-column prop="level" sortable label="等级" width="80">
     <template #default="{ row }">
       <div>lv. {{ row.level }}</div>
+      <div
+        v-show="row.level > 1"
+        class="upgrade-cost"
+      >升级成本: {{ getUpgradeCostBnx(row.level, bnxStore.goldPrice, bnxStore.bnxPrice) }} BNX</div>
     </template>
   </el-table-column>
 
@@ -48,7 +52,7 @@
     </template>
   </el-table-column>
 
-  <el-table-column v-if="isMarketing" prop="total" sortable label="总属性" width="90"></el-table-column>
+  <el-table-column prop="total" sortable label="总属性" width="90"></el-table-column>
 
   <el-table-column prop="strength" sortable label="力量">
     <template #default="{ row }">
@@ -88,7 +92,7 @@
 
   <el-table-column v-if="isMarketing" prop="seller" label="卖家">
     <template #default="{ row }">
-      <div class="id-column">{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
+      <div class="id-column" @click="copyId(row.seller)">{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
     </template>
   </el-table-column>
 </template>
@@ -96,13 +100,16 @@
 <script setup lang="ts">
 import copyText from '@/utils/copyText';
 import { ElTableColumn } from 'element-plus'
-import { contractAddress } from '../common'
+import { contractAddress, getUpgradeCostBnx } from '../common'
+import { useBnxStore } from "@/store/bnx";
+import { computed } from 'vue-demi';
 
 const props = defineProps({
   isWorking: Boolean,
   isMarketing: Boolean
 })
 
+const bnxStore = useBnxStore()
 const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } = contractAddress
 
 /**
@@ -130,5 +137,11 @@ function goOriginOrderPage(orderId: string) {
     display: flex;
     font-size: 10px;
   }
+}
+
+.upgrade-cost {
+  font-size: 10px;
+  color: red;
+  line-height: 1.4;
 }
 </style>
