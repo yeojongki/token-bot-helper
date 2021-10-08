@@ -32,6 +32,9 @@ export function withPoll(
   func: () => Promise<boolean | undefined>,
   options?: PollOptions,
 ): Promise<boolean | undefined> {
+  if (!options) {
+    options = { interval: 1000 }
+  }
   const wrappedFunc = () =>
     new Promise<boolean | undefined>(async (resolve, reject) => {
       try {
@@ -49,6 +52,34 @@ export function withPoll(
     })
 
   return utils.poll(wrappedFunc, options)
+}
+
+export function promisePoll<T = any>(func: () => Promise<T>, wait = 1000) {
+  let _timer: NodeJS.Timer | null | undefined = undefined
+  let _wait = wait
+
+  function _start() {
+    if (_timer !== null) {
+      clearTimeout(_timer as any)
+      func.call(null).then(() => {
+        _timer = setTimeout(_start, _wait)
+      })
+    }
+  }
+
+  return {
+    stop: () => {
+      clearTimeout(_timer as NodeJS.Timer)
+      _timer = null
+    },
+    start: () => {
+      _timer = undefined
+      _start()
+    },
+    setWait: (wait: number) => {
+      _wait = wait
+    },
+  }
 }
 
 /**

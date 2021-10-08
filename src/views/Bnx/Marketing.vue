@@ -35,8 +35,7 @@
             size="small"
             @click="toggleShouldWatch()"
             :type="watchOpened ? 'success' : 'info'"
-            >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button
-          >
+          >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button>
         </div>
       </div>
     </template>
@@ -46,23 +45,13 @@
 
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
-        <el-button
-          type="primary"
-          :disabled="!selection.length"
-          @click="buySelected"
-          >购买选中</el-button
-        >
+        <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
         <bnx-gold-price-balance class="ml-10"></bnx-gold-price-balance>
       </div>
       <div class="flex">
         <div class="flex items-center ml-10">
           <div class="mr-10">Gas Price:</div>
-          <el-input-number
-            size="small"
-            v-model="autoBuy.gasPrice"
-            :step-strictly="true"
-            :step="1"
-          ></el-input-number>
+          <el-input-number size="small" v-model="autoBuy.gasPrice" :step-strictly="true" :step="1"></el-input-number>
         </div>
 
         <div class="flex items-center ml-10">
@@ -102,7 +91,8 @@ import {
   ElMessage,
 } from 'element-plus'
 import { utils } from 'ethers'
-import { reactive, ref } from 'vue'
+import { promisePoll, withPoll } from '@/utils'
+import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
 import { checkIsAdvancePlayer, roleType } from './common'
 import type { Hero, WorkingHero } from './common'
@@ -111,14 +101,23 @@ import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
+import { poll } from '@ethersproject/web'
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
 const newSaleAddress = '0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F'
 const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 
-const getListInterval = ref(2500)
-const [watchOpened, setWatchOpened] = useRef<NodeJS.Timeout>(undefined as any)
+/**
+ * 请求列表间隔
+ */
+const getListInterval = ref(1000)
+
+/**
+ * true 开启
+ * false 关闭
+ */
+const [watchOpened, setWatchOpened] = useRef<boolean>(true)
 const marketList = ref([])
 
 /**
@@ -184,6 +183,7 @@ async function getList(page = 1, options?: object) {
       career: '',
       ...options,
     }
+
     const { code, data } = await get(`https://www.binaryx.pro/getSales`, params)
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
@@ -255,8 +255,8 @@ async function getList(page = 1, options?: object) {
             item.payType === 'BNX'
               ? `$${(bnxStore.bnxPrice * item.price).toFixed(2)}`
               : item.payType === 'GOLD'
-              ? `$${(bnxStore.goldPrice * item.price).toFixed(2)}`
-              : '未知'
+                ? `$${(bnxStore.goldPrice * item.price).toFixed(2)}`
+                : '未知'
 
           return item
         })
@@ -310,8 +310,9 @@ async function buyPlayer(orderId: string, price: number) {
  * 间隔修改时重新开启定时器
  */
 function handleIntervalChange() {
-  toggleShouldWatch(true)
-  toggleShouldWatch(false)
+  pollList.setWait(getListInterval.value)
+  pollList.stop()
+  pollList.start()
 }
 
 /**
@@ -319,19 +320,44 @@ function handleIntervalChange() {
  * @param closed 是否关闭
  */
 function toggleShouldWatch(closed?: boolean) {
-  if (watchOpened.value || closed) {
-    window.clearInterval(watchOpened.value)
-    setWatchOpened(null as any)
+  if (closed !== undefined) {
+    setWatchOpened(closed)
   } else {
+    setWatchOpened(!watchOpened.value)
+  }
+
+  if (watchOpened.value) {
     // 更新 bnx gold 价格和余额
     bnxStore.updateBnxAndGold()
-    setWatchOpened(setInterval(() => getList(), getListInterval.value))
   }
 }
 
-toggleShouldWatch()
+// 更新 bnx gold 价格和余额
+bnxStore.updateBnxAndGold()
+
+// 更新列表
+let pollList = promisePoll(async () => {
+  await getList()
+}, getListInterval.value)
+
+effect(() => {
+  if (watchOpened.value) {
+    pollList.start()
+  } else {
+    pollList.stop()
+  }
+})
+
+// 执行
+pollList.start()
+
+// 卸载移除轮训定时器
+onUnmounted(() => {
+  pollList.stop()
+})
+
 </script>
 
 <style lang="scss" scoped>
-@import './style.scss';
+@import "./style.scss";
 </style>
