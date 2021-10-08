@@ -35,7 +35,8 @@
             size="small"
             @click="toggleShouldWatch()"
             :type="watchOpened ? 'success' : 'info'"
-          >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button>
+            >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button
+          >
         </div>
       </div>
     </template>
@@ -45,13 +46,23 @@
 
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
-        <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
+        <el-button
+          type="primary"
+          :disabled="!selection.length"
+          @click="buySelected"
+          >购买选中</el-button
+        >
         <bnx-gold-price-balance class="ml-10"></bnx-gold-price-balance>
       </div>
       <div class="flex">
         <div class="flex items-center ml-10">
           <div class="mr-10">Gas Price:</div>
-          <el-input-number size="small" v-model="autoBuy.gasPrice" :step-strictly="true" :step="1"></el-input-number>
+          <el-input-number
+            size="small"
+            v-model="autoBuy.gasPrice"
+            :step-strictly="true"
+            :step="1"
+          ></el-input-number>
         </div>
 
         <div class="flex items-center ml-10">
@@ -67,8 +78,8 @@
     </div>
 
     <el-table
+      :height="500"
       :default-sort="{ prop: 'price', order: 'ascending' }"
-      height="500"
       :data="marketList"
       :border="true"
       @selection-change="selectionChange"
@@ -80,30 +91,30 @@
 </template>
 
 <script setup lang="ts">
-import { useActiveProvider } from '@/hooks/useActiveProvider';
-import { Contract } from '@ethersproject/contracts';
-import { ElCard, ElSwitch, ElInputNumber, ElTable, ElTableColumn, ElButton, ElMessage, ElLoading, } from 'element-plus'
-import { BigNumber, utils } from 'ethers';
-import { reactive, ref } from 'vue';
-import type { Ref } from 'vue'
-import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults';
-import { useRef } from '@/hooks/useRef';
-import { checkIsAdvancePlayer, contractAddress, getContracts, roleType } from './common';
-import type { Hero, WorkingHero } from './common';
-import { get } from '@/utils/request';
-import { formatEther } from '@ethersproject/units';
+import { useActiveProvider } from '@/hooks/useActiveProvider'
+import { Contract } from '@ethersproject/contracts'
+import {
+  ElCard,
+  ElSwitch,
+  ElInputNumber,
+  ElTable,
+  ElButton,
+  ElMessage,
+} from 'element-plus'
+import { utils } from 'ethers'
+import { reactive, ref } from 'vue'
+import { useRef } from '@/hooks/useRef'
+import { checkIsAdvancePlayer, roleType } from './common'
+import type { Hero, WorkingHero } from './common'
+import { get } from '@/utils/request'
 import SaleNewABI from './abi/saleNew'
-import saleNew from './abi/saleNew';
-import { withPoll } from '@/utils';
-import PropsColumn from './components/PropsColumn.vue';
-import { useBnxStore } from '@/store/bnx';
-import AsyncButton from '@/components/AsyncButton/index.vue';
-import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue';
-import { useNonceStore } from '@/store/nonce';
+import PropsColumn from './components/PropsColumn.vue'
+import { useBnxStore } from '@/store/bnx'
+import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
-const newSaleAddress = "0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F"
+const newSaleAddress = '0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F'
 const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 
 const getListInterval = ref(2500)
@@ -126,7 +137,7 @@ const autoBuy = reactive({
   /**
    * 购买最低价
    */
-  minPrice: 0.4,
+  minPrice: 0.46,
 
   gasLimit: 530000,
   gasPrice: 6,
@@ -142,7 +153,7 @@ const selection = ref<WorkingHero[]>([])
  */
 const payTokenTypeMap = {
   [bnxStore.bnxAddress]: 'BNX',
-  [bnxStore.goldAddress]: 'GOLD'
+  [bnxStore.goldAddress]: 'GOLD',
 }
 
 /**
@@ -167,6 +178,8 @@ async function getList(page = 1, options?: object) {
       page_size: 100,
       status: 'selling',
       name: '',
+      // sort: 'price',
+      // direction: 'asc',
       sort: 'time',
       career: '',
       ...options,
@@ -179,71 +192,77 @@ async function getList(page = 1, options?: object) {
         return
       }
 
-      marketList.value = items.map((item: Hero & { price: number } & Record<string, any>) => {
-        // 价格
-        item.price = Number(utils.formatEther(item.price))
+      marketList.value = items
+        .map((item: Hero & { price: number } & Record<string, any>) => {
+          // 价格
+          item.price = Number(utils.formatEther(item.price))
 
-        // 自动购买
-        if (autoBuy.open && item.price <= autoBuy.minPrice && !currentBuying[item.order_id]) {
-          // 设置已经购买
-          currentBuying[item.order_id] = true
-          buyPlayer(item.order_id, item.price)
-        }
+          // 自动购买
+          if (
+            autoBuy.open &&
+            item.price <= autoBuy.minPrice &&
+            !currentBuying[item.order_id]
+          ) {
+            // 设置已经购买
+            currentBuying[item.order_id] = true
+            buyPlayer(item.order_id, item.price)
+          }
 
-        // id
-        item.tokenId = item.token_id
-        delete item.token_id
+          // id
+          item.tokenId = item.token_id
+          delete item.token_id
 
-        // 体质
-        item.constitution = item.physique
-        delete item.physique
+          // 体质
+          item.constitution = item.physique
+          delete item.physique
 
-        // 意志
-        item.willpower = item.volition
-        delete item.volition
+          // 意志
+          item.willpower = item.volition
+          delete item.volition
 
-        // 智力
-        item.intelligence = item.brains
-        delete item.brains
+          // 智力
+          item.intelligence = item.brains
+          delete item.brains
 
-        // 精神
-        item.spirit = item.charm
-        delete item.charm
+          // 精神
+          item.spirit = item.charm
+          delete item.charm
 
-        // 角色地址
-        item.roleAddress = item.career_address
-        delete item.career_address
+          // 角色地址
+          item.roleAddress = item.career_address
+          delete item.career_address
 
-        // 角色
-        item.role = roleType[item.roleAddress]
+          // 角色
+          item.role = roleType[item.roleAddress]
 
-        // 高级工
-        item.isAdvance = checkIsAdvancePlayer([
-          [
-            item.strength,
-            item.agility,
-            item.constitution,
-            item.willpower,
-            item.intelligence,
-            item.spirit,
-            item.level
-          ],
-          item.roleAddress
-        ])
+          // 高级工
+          item.isAdvance = checkIsAdvancePlayer([
+            [
+              item.strength,
+              item.agility,
+              item.constitution,
+              item.willpower,
+              item.intelligence,
+              item.spirit,
+              item.level,
+            ],
+            item.roleAddress,
+          ])
 
-        // 交易代币类型
-        item.payType = payTokenTypeMap[item.pay_addr] ?? '其他'
-        item.usdPrice = item.payType === 'BNX'
-          ? `$${(bnxStore.bnxPrice * item.price).toFixed(2)}`
-          : item.payType === 'GOLD'
-            ? `$${(bnxStore.goldPrice * item.price).toFixed(2)}`
-            : '未知'
+          // 交易代币类型
+          item.payType = payTokenTypeMap[item.pay_addr] ?? '其他'
+          item.usdPrice =
+            item.payType === 'BNX'
+              ? `$${(bnxStore.bnxPrice * item.price).toFixed(2)}`
+              : item.payType === 'GOLD'
+              ? `$${(bnxStore.goldPrice * item.price).toFixed(2)}`
+              : '未知'
 
-        return item
-      }).sort((a: any, b: any) => a.block_number - b.block_number)
+          return item
+        })
+        .sort((a: any, b: any) => a.block_number - b.block_number)
     }
   } finally {
-
   }
 }
 
@@ -251,7 +270,7 @@ async function getList(page = 1, options?: object) {
  * 购买选中角色
  */
 async function buySelected() {
-  selection.value.map(item => {
+  selection.value.map((item) => {
     buyPlayer(item.order_id, item.price)
   })
 }
@@ -267,19 +286,24 @@ async function buyPlayer(orderId: string, price: number) {
     message,
   })
   console.log(message)
+  try {
+    const tx = await saleContractNew.buyPlayer(orderId, {
+      gasLimit: autoBuy.gasLimit,
+      gasPrice: utils.parseUnits(`${autoBuy.gasPrice}`, 'gwei'),
+    })
+    console.log({ tx })
 
-  const tx = await saleContractNew.buyPlayer(orderId, {
-    gasLimit: autoBuy.gasLimit,
-    gasPrice: utils.parseUnits(`${autoBuy.gasPrice}`, 'gwei'),
-  })
-  console.log({ tx })
+    await tx.wait()
 
-  await tx.wait()
+    console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
 
-  console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
-
-  buyingMsg.close()
-  ElMessage.success(`购买成功 ${orderId}, 价格为${price}`)
+    ElMessage.success(`购买成功 ${orderId}, 价格为${price}`)
+  } catch (error) {
+    ElMessage.error(`已被购买或发生错误`)
+    console.error(error)
+  } finally {
+    buyingMsg.close()
+  }
 }
 
 /**
@@ -309,5 +333,5 @@ toggleShouldWatch()
 </script>
 
 <style lang="scss" scoped>
-@import "./style.scss";
+@import './style.scss';
 </style>
