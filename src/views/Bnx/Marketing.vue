@@ -101,7 +101,6 @@ import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
-import { poll } from '@ethersproject/web'
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
@@ -111,7 +110,7 @@ const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 /**
  * 请求列表间隔
  */
-const getListInterval = ref(1000)
+const getListInterval = ref(400)
 
 /**
  * true 开启
@@ -136,7 +135,7 @@ const autoBuy = reactive({
   /**
    * 购买最低价
    */
-  minPrice: 0.46,
+  minPrice: 0.45,
 
   gasLimit: 530000,
   gasPrice: 6,
@@ -271,7 +270,12 @@ async function getList(page = 1, options?: object) {
  */
 async function buySelected() {
   selection.value.map((item) => {
-    buyPlayer(item.order_id, item.price)
+    if (bnxStore.bnxBalance >= item.price) {
+      buyPlayer(item.order_id, item.price)
+    } else {
+      ElMessage.error("余额不足")
+      console.error("余额不足")
+    }
   })
 }
 
@@ -298,6 +302,8 @@ async function buyPlayer(orderId: string, price: number) {
     console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
 
     ElMessage.success(`购买成功 ${orderId}, 价格为${price}`)
+    // 刷新 bnx 余额
+    bnxStore.updateBnxAndGoldBalance()
   } catch (error) {
     ElMessage.error(`已被购买或发生错误`)
     console.error(error)
