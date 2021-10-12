@@ -59,12 +59,13 @@ export function promisePoll<T = any>(func: () => Promise<T>, wait = 1000) {
   let _wait = wait
 
   function _start() {
-    if (_timer !== null) {
-      clearTimeout(_timer as any)
-      func.call(null).then(() => {
-        _timer = setTimeout(_start, _wait)
-      })
+    if (_timer) {
+      clearTimeout(_timer)
     }
+
+    func.call(null).then(() => {
+      _timer = setTimeout(_start, _wait)
+    })
   }
 
   return {
