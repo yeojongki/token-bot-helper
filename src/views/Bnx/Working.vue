@@ -4,7 +4,18 @@
       <div class="flex justify-between items-center">
         <div class="flex">
           <div>打工列表 ({{ workingList.length }})</div>
-          <div class="ml-10 text-red">总收益 {{ totalRewards.gold }} ≈ ${{ totalRewards.goldUsdTotal }}</div>
+          <div class="ml-10 text-red">
+            <div class="text-xs">
+              当前收益 {{ totalRewards.currentGold }} ≈ ${{
+                totalRewards.currentGoldUsdTotal
+              }}
+            </div>
+            <div class="text-xs">
+              每日收益 {{ totalRewards.dailyGold }} ≈ ${{
+                totalRewards.dailyGoldUsdTotal
+              }}
+            </div>
+          </div>
         </div>
         <div class="text-right">
           <bnx-gold-price-balance></bnx-gold-price-balance>
@@ -14,13 +25,20 @@
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
-        <el-input-number v-model="batcGetAwardsMin" class="ml-10 mr-10"></el-input-number>
+        <el-input-number
+          v-model="batcGetAwardsMin"
+          class="ml-10 mr-10"
+        ></el-input-number>
       </div>
 
       <!-- :disabled="!workingSelection.length" -->
       <div>
-        <el-button class="ml-10" type="primary" @click="batchGetAwards(0)">批量获取受益</el-button>
-        <el-button class="ml-10" type="primary" @click="batchQuitWork(0)">批量退出工作</el-button>
+        <el-button class="ml-10" type="primary" @click="batchGetAwards(0)"
+          >批量获取受益</el-button
+        >
+        <el-button class="ml-10" type="primary" @click="batchQuitWork(0)"
+          >批量退出工作</el-button
+        >
       </div>
     </div>
 
@@ -46,12 +64,23 @@
   <el-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
     <div class="mb-10 flex items-center justify-end">
       <!-- :disabled="!noWorkingSelection.length"  -->
-      <el-button class="ml-10" type="primary" @click="batchGoWork(0)">批量打工</el-button>
+      <el-button class="ml-10" type="primary" @click="batchGoWork(0)"
+        >批量打工</el-button
+      >
     </div>
 
     <div class="flex mb-20">
-      <el-input v-model="transferTo" placeholder="请输入将要转移到的钱包地址" class="mr-10"></el-input>
-      <el-button :disabled="transferTo.length !== 42" type="primary" @click="transferRole(0)">转移选中角色</el-button>
+      <el-input
+        v-model="transferTo"
+        placeholder="请输入将要转移到的钱包地址"
+        class="mr-10"
+      ></el-input>
+      <el-button
+        :disabled="transferTo.length !== 42"
+        type="primary"
+        @click="transferRole(0)"
+        >转移选中角色</el-button
+      >
     </div>
 
     <el-table
@@ -66,27 +95,34 @@
 </template>
 
 <script setup lang="ts">
-import { useActiveProvider } from '@/hooks/useActiveProvider';
-import { Contract } from '@ethersproject/contracts';
-import { ElCard, ElInputNumber, ElTable, ElTableColumn, ElInput, ElDivider, ElButton, ElMessage, ElLoading, ElAlert, ElMessageBox, } from 'element-plus'
-import { BigNumber, utils } from 'ethers';
-import { computed, ref } from 'vue';
+import { useActiveProvider } from '@/hooks/useActiveProvider'
+import { Contract } from '@ethersproject/contracts'
+import {
+  ElCard,
+  ElInputNumber,
+  ElTable,
+  ElInput,
+  ElButton,
+  ElMessage,
+} from 'element-plus'
+import { utils } from 'ethers'
+import { computed, ref } from 'vue'
 import type { Ref } from 'vue'
-import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults';
-import { useRef } from '@/hooks/useRef';
-import { contractAddress, getContracts, roleType, checkIsAdvancePlayer, getUpgradeCostBnx } from './common';
-import type { Hero, WorkingHero } from './common';
-import copyText from '@/utils/copyText';
-import { forEach, reject } from 'lodash';
-import AsyncButton from '@/components/AsyncButton/index.vue'
-import { useBnxStore } from '@/store/bnx';
-import PropsColumn from './components/PropsColumn.vue';
-import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue';
-import { useNonceStore } from '@/store/nonce';
+import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults'
+import {
+  contractAddress,
+  getContracts,
+  roleType,
+  checkIsAdvancePlayer,
+  getGoldDaily,
+} from './common'
+import type { Hero, WorkingHero } from './common'
+import { useBnxStore } from '@/store/bnx'
+import PropsColumn from './components/PropsColumn.vue'
+import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
-const [batchWorkingLoading, setBatchWorkingLoading] = useRef(false)
 
 // 更新 bnx & 金币价格
 const bnxStore = useBnxStore()
@@ -98,13 +134,33 @@ bnxStore.updateBnxAndGold()
 const transferTo = ref('')
 
 /**
- * 总收益 $
+ * 当前收益 / 每日收益 $
  */
 const totalRewards = computed(() => {
-  const gold = workingList.value.reduce((prev, next) => prev + next.income, 0)
+  let currentGold = 0
+  let dailyGold = 0
+  workingList.value.forEach((item) => {
+    let mainProp = 0
+
+    if (
+      item.roleAddress === contractAddress.WarriorAddress ||
+      item.roleAddress === contractAddress.RangerAddress
+    ) {
+      mainProp = item.strength
+    } else if (item.roleAddress === contractAddress.RobberAddress) {
+      mainProp = item.agility
+    } else if (item.roleAddress === contractAddress.MageAddress) {
+      mainProp = item.intelligence
+    }
+
+    currentGold += item.income
+    dailyGold += getGoldDaily(item.workType, mainProp, item.level + '')
+  })
   return {
-    gold: gold.toFixed(2),
-    goldUsdTotal: (gold * bnxStore.goldPrice).toFixed(2),
+    currentGold: currentGold.toFixed(2),
+    currentGoldUsdTotal: (currentGold * bnxStore.goldPrice).toFixed(2),
+    dailyGold: dailyGold.toFixed(2),
+    dailyGoldUsdTotal: (dailyGold * bnxStore.goldPrice).toFixed(2),
   }
 })
 
@@ -159,7 +215,8 @@ function getPlayerBaseDetail(playInfo: any[]) {
   const level = Number(playInfo[0][6])
 
   // 总
-  const total = strength + agility + constitution + willpower + intelligence + spirit
+  const total =
+    strength + agility + constitution + willpower + intelligence + spirit
 
   return {
     strength,
@@ -179,8 +236,13 @@ function getPlayerBaseDetail(playInfo: any[]) {
 /**
  * 获取打工详情 (没做皇室守卫 & 军团士兵)
  */
-async function getWorkPlayerDetail(index: number, miningContract = contracts.MiningAddress): Promise<WorkingHero> {
-  const tokenId = String(await miningContract.tokenOfOwnerByIndex(account, index))
+async function getWorkPlayerDetail(
+  index: number,
+  miningContract = contracts.MiningAddress,
+): Promise<WorkingHero> {
+  const tokenId = String(
+    await miningContract.tokenOfOwnerByIndex(account, index),
+  )
   const playInfo = await contracts.PlayInfoAddress.getPlayerInfoBySet(tokenId)
   const recWorkInfo = await miningContract.getPlayerWork(tokenId)
   const [workType, , startTime] = recWorkInfo
@@ -190,18 +252,38 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
   let endBlock = (await provider.getBlockNumber()) + ''
 
   if (workType === contractAddress.LinggongAddress) {
-    income = await contracts.LinggongAddress.getIncome(playInfo[0], startTime, endBlock)
+    income = await contracts.LinggongAddress.getIncome(
+      playInfo[0],
+      startTime,
+      endBlock,
+    )
   } else if (workType === contractAddress.BookmangerAddress) {
-    income = await contracts.BookmangerAddress.getIncome(playInfo[0], startTime, endBlock)
+    income = await contracts.BookmangerAddress.getIncome(
+      playInfo[0],
+      startTime,
+      endBlock,
+    )
     isAdvanceJob = true
   } else if (workType === contractAddress.BlacksmithAddress) {
-    income = await contracts.BlacksmithAddress.getIncome(playInfo[0], startTime, endBlock)
+    income = await contracts.BlacksmithAddress.getIncome(
+      playInfo[0],
+      startTime,
+      endBlock,
+    )
     isAdvanceJob = true
   } else if (workType === contractAddress.RangeworkAddress) {
-    income = await contracts.RangeworkAddress.getIncome(playInfo[0], startTime, endBlock)
+    income = await contracts.RangeworkAddress.getIncome(
+      playInfo[0],
+      startTime,
+      endBlock,
+    )
     isAdvanceJob = true
   } else if (workType === contractAddress.HunterAddress) {
-    income = await contracts.HunterAddress.getIncome(playInfo[0], startTime, endBlock)
+    income = await contracts.HunterAddress.getIncome(
+      playInfo[0],
+      startTime,
+      endBlock,
+    )
     isAdvanceJob = true
   }
 
@@ -214,7 +296,8 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
     tokenId,
     income,
     incomeUsd: (income * bnxStore.goldPrice).toFixed(2),
-    isAdvanceJob
+    isAdvanceJob,
+    workType,
   }
 }
 
@@ -223,7 +306,9 @@ async function getWorkPlayerDetail(index: number, miningContract = contracts.Min
  */
 async function getPlayerInfo(index: number, contract: Contract) {
   const tokenId = String(await contract.tokenOfOwnerByIndex(account, index))
-  const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(tokenId)
+  const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(
+    tokenId,
+  )
 
   const baseInfo = getPlayerBaseDetail(playInfo)
 
@@ -238,14 +323,20 @@ async function getPlayerInfo(index: number, contract: Contract) {
  */
 async function getWorkingPlayers() {
   const promiseDatas: Promise<WorkingHero>[] = []
-  const partimeJobCount = Number(await contracts.MiningAddress.balanceOf(account))
-  const newMiningJobCount = Number(await contracts.NewMiningAddress.balanceOf(account))
+  const partimeJobCount = Number(
+    await contracts.MiningAddress.balanceOf(account),
+  )
+  const newMiningJobCount = Number(
+    await contracts.NewMiningAddress.balanceOf(account),
+  )
 
   for (let i = 0; i < newMiningJobCount; i++) {
     promiseDatas.push(
       new Promise<WorkingHero>((resolve, reject) => {
-        getWorkPlayerDetail(i, contracts.NewMiningAddress).then(resolve).catch(reject)
-      })
+        getWorkPlayerDetail(i, contracts.NewMiningAddress)
+          .then(resolve)
+          .catch(reject)
+      }),
     )
   }
 
@@ -253,7 +344,7 @@ async function getWorkingPlayers() {
     promiseDatas.push(
       new Promise<WorkingHero>((resolve, reject) => {
         getWorkPlayerDetail(i).then(resolve).catch(reject)
-      })
+      }),
     )
   }
 
@@ -270,7 +361,7 @@ async function getAwardByTokenId(tokenId: string, isAdvanceJob: boolean) {
       ? await contracts.NewMiningAddress.getAward(tokenId)
       : await contracts.MiningAddress.getAward(tokenId)
     await tx.wait()
-    ElMessage.success("获取成功")
+    ElMessage.success('获取成功')
   } catch (error) {
     ElMessage.error('获取失败, 请重试')
     console.log(error)
@@ -303,7 +394,10 @@ async function batchGetAwards(index = 0) {
 /**
  * 收入总计
  */
-function getIncomeSummaries(param: { columns: TableColumnCtx<any>, data: WorkingHero[] }) {
+function getIncomeSummaries(param: {
+  columns: TableColumnCtx<any>
+  data: WorkingHero[]
+}) {
   const { columns, data } = param
   const sums: string[] = []
   // @ts-ignore
@@ -317,10 +411,12 @@ function getIncomeSummaries(param: { columns: TableColumnCtx<any>, data: Working
       const values = data.map((item) => {
         return Number(item[column.property as keyof WorkingHero])
       })
-      sums[index] = `${values.reduce((prev, curr) => {
-        const value = Number(curr)
-        return prev + curr
-      }, 0).toFixed(2)}`
+      sums[index] = `${values
+        .reduce((prev, curr) => {
+          const value = Number(curr)
+          return prev + curr
+        }, 0)
+        .toFixed(2)}`
     } else {
       sums[index] = ''
     }
@@ -337,33 +433,32 @@ function getPlayersNoWorking() {
     contracts.WarriorAddress.balanceOf(account),
     contracts.RobberAddress.balanceOf(account),
     contracts.MageAddress.balanceOf(account),
-    contracts.RangerAddress.balanceOf(account)
-  ])
-    .then(res => {
-      const totalCountArray = res.map(Number)
-      const [warriorCount, robberCount, mageCount, rangerCount] = totalCountArray
+    contracts.RangerAddress.balanceOf(account),
+  ]).then((res) => {
+    const totalCountArray = res.map(Number)
+    const [warriorCount, robberCount, mageCount, rangerCount] = totalCountArray
 
-      const promiseDatas: Promise<Hero>[] = []
-      for (let i = 0; i < warriorCount; i++) {
-        promiseDatas.push(getPlayerInfo(i, contracts.WarriorAddress))
-      }
+    const promiseDatas: Promise<Hero>[] = []
+    for (let i = 0; i < warriorCount; i++) {
+      promiseDatas.push(getPlayerInfo(i, contracts.WarriorAddress))
+    }
 
-      for (let i = 0; i < robberCount; i++) {
-        promiseDatas.push(getPlayerInfo(i, contracts.RobberAddress))
-      }
+    for (let i = 0; i < robberCount; i++) {
+      promiseDatas.push(getPlayerInfo(i, contracts.RobberAddress))
+    }
 
-      for (let i = 0; i < mageCount; i++) {
-        promiseDatas.push(getPlayerInfo(i, contracts.MageAddress))
-      }
+    for (let i = 0; i < mageCount; i++) {
+      promiseDatas.push(getPlayerInfo(i, contracts.MageAddress))
+    }
 
-      for (let i = 0; i < rangerCount; i++) {
-        promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
-      }
+    for (let i = 0; i < rangerCount; i++) {
+      promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
+    }
 
-      Promise.all(promiseDatas).then(res => {
-        noWorkingList.value = res
-      })
+    Promise.all(promiseDatas).then((res) => {
+      noWorkingList.value = res
     })
+  })
 }
 
 // 貌似不能调用 cannot estimate gas; transaction may fail or may require manual gas limit
@@ -392,7 +487,7 @@ async function batchGoWork(index = 0) {
     ElMessage.info(`开始打工 [${index}]`)
     const tx = await contracts.MiningAddress.work(
       contractAddress.LinggongAddress,
-      noWorkingList.value[index].tokenId
+      noWorkingList.value[index].tokenId,
     )
     await tx.wait()
     console.log(`已开始打工 [${index}]`)
@@ -407,7 +502,6 @@ async function batchGoWork(index = 0) {
     getWorkingPlayers()
   }
 }
-
 
 /**
  * 实际调用转移选中角色执行
@@ -430,7 +524,6 @@ async function transferRole(index = 0) {
   // TODO 授权
   // const approvedTx = await contracts.WarriorAddress.setApprovalForAll(contractAddress.NewMiningAddress, true)
   // await approvedTx.wait()
-
 
   if (noWorkingSelection.value[index]?.tokenId) {
     const item = noWorkingSelection.value[index]
@@ -456,7 +549,7 @@ async function transferRole(index = 0) {
     console.log('转移完成')
     ElMessage({
       type: 'success',
-      message: '转移完成'
+      message: '转移完成',
     })
   }
 
@@ -466,7 +559,6 @@ async function transferRole(index = 0) {
   // })
 }
 
-
 async function quitWorkHelper(tokenId: string) {
   const tx = await contracts.MiningAddress.quitWork(tokenId)
   await tx.wait()
@@ -475,11 +567,10 @@ async function quitWorkHelper(tokenId: string) {
 
 function batchQuitWork(index = 0) {
   if (workingSelection.value[index]?.tokenId) {
-    quitWorkHelper(workingSelection.value[index].tokenId)
-      .then(() => {
-        index++
-        batchQuitWork(index)
-      })
+    quitWorkHelper(workingSelection.value[index].tokenId).then(() => {
+      index++
+      batchQuitWork(index)
+    })
   } else {
     ElMessage.success('成功退出工作')
   }
@@ -491,5 +582,5 @@ getWorkingPlayers()
 </script>
 
 <style lang="scss" scoped>
-@import "./style.scss";
+@import './style.scss';
 </style>

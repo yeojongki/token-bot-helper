@@ -33,8 +33,12 @@ export interface Hero {
   isAdvance: boolean
 }
 
-export interface WorkingHero extends Omit<Hero, 'workType'> {
+export interface WorkingHero extends Hero {
   [x: string]: any
+  /**
+   * 工作类型(合约)
+   */
+  workType: string
   income: number
   incomeUsd: string
   /**
@@ -213,6 +217,66 @@ export function checkIsAdvancePlayer(playInfo: any[]): boolean {
     default:
       return false
   }
+}
+
+/**
+ * 等级倍数 map
+ */
+const levelMultiple = {
+  '1': 1,
+  '2': 2,
+  '3': 4,
+  '4': 8,
+  '5': 16,
+  '6': 25,
+  '7': 50,
+  '8': 75,
+  '9': 100,
+  '10': 200,
+  '11': 300,
+  '12': 500,
+}
+
+/**
+ * 可获得的每日金币数量
+ * @param workType
+ * @param mainProp
+ * @param level
+ * @returns
+ */
+export const getGoldDaily = (
+  workType: string,
+  mainProp: number,
+  level: string,
+) => {
+  let gold = 0
+  // 普通工作
+  if (workType === contractAddress.LinggongAddress) {
+    gold = 0.01
+  } else {
+    // 高级工
+
+    // 二级工
+    if (
+      workType === contractAddress.BlacksmithAddress ||
+      workType === contractAddress.HunterAddress ||
+      workType === contractAddress.BookmangerAddress ||
+      workType === contractAddress.RangeworkAddress
+    ) {
+      gold = 0.01 + (mainProp - MAIN_PROP_MIN) * 0.005
+    }
+
+    // TODO 大于 5级的高级工作
+  }
+
+  // 等级倍数 * 每秒区块 * 60 分钟 * 24 小时
+  return (
+    gold *
+    (60 / 3) *
+    levelMultiple[level as keyof typeof levelMultiple] *
+    24 *
+    60
+  )
 }
 
 /**
