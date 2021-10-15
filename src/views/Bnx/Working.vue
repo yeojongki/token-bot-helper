@@ -388,6 +388,8 @@ async function batchGetAwards(index = 0) {
     }
   } else {
     ElMessage.success(`批量领取完成`)
+    // 刷新打工列表
+    getWorkingPlayers()
   }
 }
 
