@@ -243,7 +243,7 @@ async function getWorkPlayerDetail(
   const tokenId = String(
     await miningContract.tokenOfOwnerByIndex(account, index),
   )
-  const playInfo = await contracts.PlayInfoAddress.getPlayerInfoBySet(tokenId)
+  const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(tokenId)
   const recWorkInfo = await miningContract.getPlayerWork(tokenId)
   const [workType, , startTime] = recWorkInfo
 

@@ -49,7 +49,7 @@ export interface WorkingHero extends Hero {
 
 export const contractAddress = {
   PlayInfoAddress: '0x8b8de33B057aF4F089Dcb56F21Bc6B135F99276A',
-  NewPlayInfoAddress: '0x8b8de33B057aF4F089Dcb56F21Bc6B135F99276A',
+  NewPlayInfoAddress: '0x210d87BA2990082FF22eA15396303382B1FaEA56',
   MiningAddress: '0xe278BDF4541cc309b379F9A4E867F60fD6B7BC59',
   NewMiningAddress: '0x698E165F2897e4daC68671c4cDFf337bbC543767',
   BscAddress: '0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97',
