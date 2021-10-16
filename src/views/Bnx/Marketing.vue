@@ -94,13 +94,14 @@ import { utils } from 'ethers'
 import { promisePoll, withPoll } from '@/utils'
 import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
-import { checkIsAdvancePlayer, roleType } from './common'
+import { checkIsAdvancePlayer, getHeroMainProp, roleType } from './common'
 import type { Hero, WorkingHero } from './common'
 import { get } from '@/utils/request'
 import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
+import { head } from 'lodash'
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
@@ -149,7 +150,7 @@ const selection = ref<WorkingHero[]>([])
 /**
  * 交易代币 map
  */
-const payTokenTypeMap = {
+const payTokenTypeMap: Record<string, Hero['payType']> = {
   [bnxStore.bnxAddress]: 'BNX',
   [bnxStore.goldAddress]: 'GOLD',
 }
@@ -248,14 +249,16 @@ async function getList(page = 1, options?: object) {
             item.roleAddress,
           ])
 
-          // 交易代币类型
-          item.payType = payTokenTypeMap[item.pay_addr] ?? '其他'
+          // 交易代币类型 
+          // warn: 可能以后会有其他类型
+          item.payType = payTokenTypeMap[item.pay_addr]
           item.usdPrice =
             item.payType === 'BNX'
-              ? `$${(bnxStore.bnxPrice * item.price).toFixed(2)}`
-              : item.payType === 'GOLD'
-                ? `$${(bnxStore.goldPrice * item.price).toFixed(2)}`
-                : '未知'
+              ? Number((bnxStore.bnxPrice * item.price).toFixed(2))
+              : Number((bnxStore.goldPrice * item.price).toFixed(2))
+
+          // 主属性
+          item.mainProp = getHeroMainProp(item)
 
           return item
         })

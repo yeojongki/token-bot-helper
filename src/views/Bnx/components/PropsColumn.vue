@@ -10,21 +10,24 @@
     </template>
   </el-table-column>
 
-  <el-table-column v-if="isMarketing" prop="name" label="标题">
+  <!-- <el-table-column v-if="isMarketing" prop="name" label="标题">
     <template #default="{ row }">
       <div :title="row.name">{{ row.name.slice(0, 12) }}{{ row.name.length > 12 ? '...' : '' }}</div>
     </template>
-  </el-table-column>
+  </el-table-column>-->
 
   <el-table-column prop="role" label="角色" width="55"></el-table-column>
 
   <el-table-column prop="level" sortable label="等级" width="80">
     <template #default="{ row }">
       <div>lv. {{ row.level }}</div>
-      <div
-        v-show="row.level > 1"
-        class="upgrade-cost"
-      >升级成本: {{ getUpgradeCostBnx(row.level, bnxStore.goldPrice, bnxStore.bnxPrice) }} BNX</div>
+      <div v-show="row.level > 1" class="upgrade-cost">
+        升级成本:
+        {{
+          getUpgradeCostBnx(row.level, bnxStore.goldPrice, bnxStore.bnxPrice)
+        }}
+        BNX
+      </div>
     </template>
   </el-table-column>
 
@@ -47,7 +50,22 @@
     <template #default="{ row }">
       <div class="price-row">
         <div>{{ row.price }} {{ row.payType }}</div>
-        <div class="price-usd">≈ {{ row.usdPrice }}</div>
+        <div class="price-usd">≈ ${{ row.usdPrice }}</div>
+      </div>
+    </template>
+  </el-table-column>
+
+  <el-table-column v-if="isMarketing" prop="price" width="100" label="回本">
+    <template #default="{ row }">
+      <div class="price-row">
+        <div
+          v-if="!row.isAdvance"
+        >零工:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 1 }) }}天</div>
+        <div v-else>
+          <div>3级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 }) }}天</div>
+          <div>4级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 }) }}天</div>
+          <div>5级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 }) }}天</div>
+        </div>
       </div>
     </template>
   </el-table-column>
@@ -57,7 +75,12 @@
   <el-table-column prop="strength" sortable label="力量">
     <template #default="{ row }">
       <div
-        :class="{ 'advance-main-prop': row.isAdvance && (row.roleAddress === WarriorAddress || row.roleAddress === RangerAddress) }"
+        :class="{
+          'advance-main-prop':
+            row.isAdvance &&
+            (row.roleAddress === WarriorAddress ||
+              row.roleAddress === RangerAddress),
+        }"
       >{{ row.strength }}</div>
     </template>
   </el-table-column>
@@ -65,7 +88,10 @@
   <el-table-column prop="agility" sortable label="敏捷">
     <template #default="{ row }">
       <div
-        :class="{ 'advance-main-prop': row.isAdvance && row.roleAddress === RobberAddress }"
+        :class="{
+          'advance-main-prop':
+            row.isAdvance && row.roleAddress === RobberAddress,
+        }"
       >{{ row.agility }}</div>
     </template>
   </el-table-column>
@@ -73,7 +99,9 @@
   <el-table-column prop="intelligence" sortable label="智力">
     <template #default="{ row }">
       <div
-        :class="{ 'advance-main-prop': row.isAdvance && row.roleAddress === MageAddress }"
+        :class="{
+          'advance-main-prop': row.isAdvance && row.roleAddress === MageAddress,
+        }"
       >{{ row.intelligence }}</div>
     </template>
   </el-table-column>
@@ -84,7 +112,7 @@
 
   <el-table-column prop="spirit" sortable label="精神"></el-table-column>
 
-  <el-table-column v-if="isMarketing" prop="order_id" sortable label="订单id" width="90">
+  <el-table-column v-if="isMarketing" prop="order_id" label="订单 ID" width="90">
     <template #default="{ row }">
       <div class="id-column" @click="goOriginOrderPage(row.order_id)">{{ row.order_id }}</div>
     </template>
@@ -92,25 +120,34 @@
 
   <el-table-column v-if="isMarketing" prop="seller" label="卖家">
     <template #default="{ row }">
-      <div class="id-column" @click="copyId(row.seller)">{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
+      <div
+        class="id-column"
+        @click="copyId(row.seller)"
+      >{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
     </template>
   </el-table-column>
 </template>
 
 <script setup lang="ts">
-import copyText from '@/utils/copyText';
+import copyText from '@/utils/copyText'
 import { ElTableColumn } from 'element-plus'
-import { contractAddress, getUpgradeCostBnx } from '../common'
-import { useBnxStore } from "@/store/bnx";
-import { computed } from 'vue-demi';
+import {
+  contractAddress,
+  getUpgradeCostBnx,
+  getPaybackCycle,
+  getHeroMainProp,
+} from '../common'
+import { useBnxStore } from '@/store/bnx'
+import { computed } from 'vue-demi'
 
 const props = defineProps({
   isWorking: Boolean,
-  isMarketing: Boolean
+  isMarketing: Boolean,
 })
 
 const bnxStore = useBnxStore()
-const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } = contractAddress
+const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
+  contractAddress
 
 /**
  * 复制 token ID
@@ -120,7 +157,10 @@ function copyId(id: string) {
 }
 
 function goOriginOrderPage(orderId: string) {
-  window.open(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`, "_blank")
+  window.open(
+    `https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`,
+    '_blank',
+  )
 }
 </script>
 

@@ -31,6 +31,18 @@ export interface Hero {
    * 属性能否满足打高级工作
    */
   isAdvance: boolean
+  /**
+   * 主属性
+   */
+  mainProp: number
+  /**
+   * 市场交易时的代币类型
+   */
+  payType?: 'BNX' | 'GOLD'
+  /**
+   * 市场交易时的 usd 价格
+   */
+  usdPrice?: number
 }
 
 export interface WorkingHero extends Hero {
@@ -45,6 +57,29 @@ export interface WorkingHero extends Hero {
    * 当前是否在做高级工作
    */
   isAdvanceJob: boolean
+}
+
+/**
+ * 获取回本周期参数
+ */
+export interface PaybackCycleParams {
+  workType: string
+  mainProp: number
+  /**
+   * 当前等级
+   */
+  level: number
+  /**
+   * 升级到目标等级
+   */
+  targetLevel: number
+  /**
+   * 当前价格
+   */
+  usdPrice: number
+  isAdvance: boolean
+  goldPrice: number
+  bnxPrice: number
 }
 
 export const contractAddress = {
@@ -247,7 +282,7 @@ const levelMultiple = {
 export const getGoldDaily = (
   workType: string,
   mainProp: number,
-  level: string,
+  level: number,
 ) => {
   let gold = 0
   // 普通工作
@@ -273,7 +308,7 @@ export const getGoldDaily = (
   return (
     gold *
     (60 / 3) *
-    levelMultiple[level as keyof typeof levelMultiple] *
+    levelMultiple[level as unknown as keyof typeof levelMultiple] *
     24 *
     60
   )
@@ -288,7 +323,7 @@ export const upgradeCostPriceMap: Record<number, number[]> = {
   2: [20000, 0],
   3: [50000, 0],
   4: [150000, 0],
-  5: [450000, 0],
+  5: [450000, 5],
   6: [1000000, 50],
   7: [2000000, 100],
 }
@@ -306,21 +341,84 @@ export function getUpgradeCostBnx(
   bnxPrice: number,
 ) {
   if (!level || level <= 1) {
-    return '0'
+    return 0
   }
 
-  let goldCost = 0
-  let bnxCost = 0
+  let total = 0
 
-  const arr = upgradeCostPriceMap[level]
+  for (let index = level; index > 1; index--) {
+    const arr = upgradeCostPriceMap[index]
 
-  if (arr[0]) {
-    goldCost = arr[0] * goldPrice
+    if (arr[0]) {
+      total += arr[0] * goldPrice
+    }
+
+    if (arr[1]) {
+      total += arr[1] * bnxPrice
+    }
   }
 
-  if (arr[1]) {
-    bnxCost = arr[1] * bnxPrice
+  return Number((total / bnxPrice).toFixed(2))
+}
+
+/**
+ * 获取英雄主属性
+ * @param hero
+ * @returns
+ */
+export function getHeroMainProp(hero: Hero) {
+  let mainProp = 0
+
+  if (
+    hero.roleAddress === contractAddress.WarriorAddress ||
+    hero.roleAddress === contractAddress.RangerAddress
+  ) {
+    mainProp = hero.strength
+  } else if (hero.roleAddress === contractAddress.RobberAddress) {
+    mainProp = hero.agility
+  } else if (hero.roleAddress === contractAddress.MageAddress) {
+    mainProp = hero.intelligence
+  } else {
+    console.error(`未匹配角色: ${hero.roleAddress}`)
   }
 
-  return ((goldCost / (bnxCost || 1) + bnxCost) / bnxPrice).toFixed(2)
+  return mainProp
+}
+
+function toFixed1(number: number) {
+  return Number(number.toFixed(1))
+}
+
+export function getPaybackCycle({
+  mainProp,
+  level,
+  targetLevel,
+  isAdvance,
+  usdPrice,
+  bnxPrice,
+  goldPrice,
+}: PaybackCycleParams) {
+  // 计算方式为: 当前的价格 / 每天收益价格
+  const goldDailyCount = getGoldDaily(
+    // TODO 高级工作目前都写死为图书管理员
+    isAdvance
+      ? contractAddress.BookmangerAddress
+      : contractAddress.LinggongAddress,
+    mainProp,
+    targetLevel,
+  )
+  const goldDailyUsd = goldDailyCount * goldPrice
+
+  // 不合格的只当普通零工一级处理
+  if (!isAdvance) {
+    return toFixed1(usdPrice / goldDailyUsd)
+  }
+
+  // 高级工作
+  // 升级到目标等级的成本
+  const targetCost = getUpgradeCostBnx(targetLevel, goldPrice, bnxPrice)
+  const levelCost = getUpgradeCostBnx(level, goldPrice, bnxPrice)
+  const costBnx = targetCost - levelCost
+  const costBnxUsd = costBnx * bnxPrice
+  return toFixed1((costBnxUsd + usdPrice) / goldDailyUsd)
 }

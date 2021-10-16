@@ -115,6 +115,7 @@ import {
   roleType,
   checkIsAdvancePlayer,
   getGoldDaily,
+getHeroMainProp,
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { useBnxStore } from '@/store/bnx'
@@ -140,18 +141,7 @@ const totalRewards = computed(() => {
   let currentGold = 0
   let dailyGold = 0
   workingList.value.forEach((item) => {
-    let mainProp = 0
-
-    if (
-      item.roleAddress === contractAddress.WarriorAddress ||
-      item.roleAddress === contractAddress.RangerAddress
-    ) {
-      mainProp = item.strength
-    } else if (item.roleAddress === contractAddress.RobberAddress) {
-      mainProp = item.agility
-    } else if (item.roleAddress === contractAddress.MageAddress) {
-      mainProp = item.intelligence
-    }
+    const mainProp = getHeroMainProp(item)
 
     currentGold += item.income
     dailyGold += getGoldDaily(item.workType, mainProp, item.level + '')
