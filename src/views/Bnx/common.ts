@@ -336,17 +336,18 @@ export const upgradeCostPriceMap: Record<number, number[]> = {
  * @returns
  */
 export function getUpgradeCostBnx(
-  level: number,
+  fromLevel: number,
+  toLevel: number,
   goldPrice: number,
   bnxPrice: number,
 ) {
-  if (!level || level <= 1) {
+  if (toLevel <= 1 || goldPrice === 0 || bnxPrice === 0) {
     return 0
   }
 
   let total = 0
 
-  for (let index = level; index > 1; index--) {
+  for (let index = toLevel; index > fromLevel; index--) {
     const arr = upgradeCostPriceMap[index]
 
     if (arr[0]) {
@@ -366,7 +367,12 @@ export function getUpgradeCostBnx(
  * @param hero
  * @returns
  */
-export function getHeroMainProp(hero: Hero) {
+export function getHeroMainProp(hero: {
+  roleAddress: string
+  strength: number
+  agility: number
+  intelligence: number
+}) {
   let mainProp = 0
 
   if (
@@ -389,6 +395,11 @@ function toFixed1(number: number) {
   return Number(number.toFixed(1))
 }
 
+/**
+ * 获取英雄回本周期 (天)
+ * @param param0
+ * @returns
+ */
 export function getPaybackCycle({
   mainProp,
   level,
@@ -409,6 +420,11 @@ export function getPaybackCycle({
   )
   const goldDailyUsd = goldDailyCount * goldPrice
 
+  // 没有金币价格低时候返回0
+  if (goldDailyUsd <= 0) {
+    return 0
+  }
+
   // 不合格的只当普通零工一级处理
   if (!isAdvance) {
     return toFixed1(usdPrice / goldDailyUsd)
@@ -416,9 +432,9 @@ export function getPaybackCycle({
 
   // 高级工作
   // 升级到目标等级的成本
-  const targetCost = getUpgradeCostBnx(targetLevel, goldPrice, bnxPrice)
-  const levelCost = getUpgradeCostBnx(level, goldPrice, bnxPrice)
-  const costBnx = targetCost - levelCost
+  const costBnx = getUpgradeCostBnx(level, targetLevel, goldPrice, bnxPrice)
   const costBnxUsd = costBnx * bnxPrice
-  return toFixed1((costBnxUsd + usdPrice) / goldDailyUsd)
+
+  const cycle = toFixed1((costBnxUsd + usdPrice) / goldDailyUsd)
+  return cycle
 }

@@ -3,39 +3,11 @@
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <div>市场列表</div>
-          <el-switch
-            class="ml-10"
-            v-model="autoBuy.open"
-            :active-text="autoBuy.open ? '已开启自动购买' : '已关闭自动购买'"
-          ></el-switch>
-          <div class="flex items-center ml-10">
-            <div class="mr-10">自动购买最低价:</div>
-            <el-input-number
-              size="small"
-              v-model="autoBuy.minPrice"
-              :step-strictly="true"
-              :step="0.01"
-            ></el-input-number>
-          </div>
+          <div class="mr-10">市场列表</div>
         </div>
 
         <div class="flex items-center">
-          <div class="flex items-center mr-10">
-            <div class="mr-10">刷新间隔:</div>
-            <el-input-number
-              size="small"
-              @change="handleIntervalChange"
-              v-model="getListInterval"
-              :step-strictly="true"
-              :step="100"
-            ></el-input-number>
-          </div>
-          <el-button
-            size="small"
-            @click="toggleShouldWatch()"
-            :type="watchOpened ? 'success' : 'info'"
-          >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button>
+          <bnx-gold-price-balance class="ml-10"></bnx-gold-price-balance>
         </div>
       </div>
     </template>
@@ -43,12 +15,51 @@
       <el-button :disabled="!selection.length" class="ml-10" type="primary" @click="batchBuy">批量购买</el-button>
     </div>-->
 
-    <div class="mb-20 flex items-center justify-between">
-      <div class="flex items-center">
-        <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
-        <bnx-gold-price-balance class="ml-10"></bnx-gold-price-balance>
+    <el-card>
+      <template #header>
+        <div class="flex items-center">
+          <div class="mr-10">列表配置</div>
+          <el-button
+            size="small"
+            @click="toggleShouldWatch()"
+            :type="watchOpened ? 'success' : 'info'"
+          >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button>
+        </div>
+      </template>
+      <div class="flex items-center mr-10">
+        <div class="mr-10">刷新间隔:</div>
+        <el-input-number
+          size="small"
+          @change="handleIntervalChange"
+          v-model="getListInterval"
+          :step-strictly="true"
+          :step="100"
+        ></el-input-number>
       </div>
-      <div class="flex">
+    </el-card>
+
+    <el-card class="mt-20">
+      <template #header>
+        <div class="flex items-center">
+          <div class="mr-10">购买配置</div>
+          <el-switch
+            class="ml-10"
+            v-model="autoBuy.open"
+            :active-text="autoBuy.open ? '已开启自动购买' : '已关闭自动购买'"
+          ></el-switch>
+        </div>
+      </template>
+      <div class="flex items-center">
+        <div class="flex items-center ml-10">
+          <div class="mr-10">自动购买最低价:</div>
+          <el-input-number
+            size="small"
+            v-model="autoBuy.minPrice"
+            :step-strictly="true"
+            :step="0.01"
+          ></el-input-number>
+        </div>
+
         <div class="flex items-center ml-10">
           <div class="mr-10">Gas Price:</div>
           <el-input-number size="small" v-model="autoBuy.gasPrice" :step-strictly="true" :step="1"></el-input-number>
@@ -64,9 +75,14 @@
           ></el-input-number>
         </div>
       </div>
-    </div>
+    </el-card>
+
+    <el-card class="mt-20 mb-20" header="操作">
+      <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
+    </el-card>
 
     <el-table
+      row-key="tokenId"
       :height="500"
       :default-sort="{ prop: 'price', order: 'ascending' }"
       :data="marketList"

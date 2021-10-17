@@ -25,20 +25,13 @@
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
-        <el-input-number
-          v-model="batcGetAwardsMin"
-          class="ml-10 mr-10"
-        ></el-input-number>
+        <el-input-number v-model="batcGetAwardsMin" class="ml-10 mr-10"></el-input-number>
       </div>
 
       <!-- :disabled="!workingSelection.length" -->
       <div>
-        <el-button class="ml-10" type="primary" @click="batchGetAwards(0)"
-          >批量获取受益</el-button
-        >
-        <el-button class="ml-10" type="primary" @click="batchQuitWork(0)"
-          >批量退出工作</el-button
-        >
+        <el-button class="ml-10" type="primary" @click="batchGetAwards(0)">批量获取受益</el-button>
+        <el-button class="ml-10" type="primary" @click="batchQuitWork(0)">批量退出工作</el-button>
       </div>
     </div>
 
@@ -64,23 +57,12 @@
   <el-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
     <div class="mb-10 flex items-center justify-end">
       <!-- :disabled="!noWorkingSelection.length"  -->
-      <el-button class="ml-10" type="primary" @click="batchGoWork(0)"
-        >批量打工</el-button
-      >
+      <el-button class="ml-10" type="primary" @click="batchGoWork(0)">批量打工</el-button>
     </div>
 
     <div class="flex mb-20">
-      <el-input
-        v-model="transferTo"
-        placeholder="请输入将要转移到的钱包地址"
-        class="mr-10"
-      ></el-input>
-      <el-button
-        :disabled="transferTo.length !== 42"
-        type="primary"
-        @click="transferRole(0)"
-        >转移选中角色</el-button
-      >
+      <el-input v-model="transferTo" placeholder="请输入将要转移到的钱包地址" class="mr-10"></el-input>
+      <el-button :disabled="transferTo.length !== 42" type="primary" @click="transferRole(0)">转移选中角色</el-button>
     </div>
 
     <el-table
@@ -115,7 +97,7 @@ import {
   roleType,
   checkIsAdvancePlayer,
   getGoldDaily,
-getHeroMainProp,
+  getHeroMainProp,
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { useBnxStore } from '@/store/bnx'
@@ -144,7 +126,7 @@ const totalRewards = computed(() => {
     const mainProp = getHeroMainProp(item)
 
     currentGold += item.income
-    dailyGold += getGoldDaily(item.workType, mainProp, item.level + '')
+    dailyGold += getGoldDaily(item.workType, mainProp, item.level)
   })
   return {
     currentGold: currentGold.toFixed(2),
@@ -233,7 +215,10 @@ async function getWorkPlayerDetail(
   const tokenId = String(
     await miningContract.tokenOfOwnerByIndex(account, index),
   )
-  const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(tokenId)
+  const playInfo = await contracts.NewPlayInfoAddress.getPlayerInfoBySet(
+    tokenId,
+  )
+  console.log(playInfo)
   const recWorkInfo = await miningContract.getPlayerWork(tokenId)
   const [workType, , startTime] = recWorkInfo
 
@@ -280,9 +265,16 @@ async function getWorkPlayerDetail(
   income = Number(utils.formatEther(income))
 
   const baseInfo = getPlayerBaseDetail(playInfo)
+  const mainProp = getHeroMainProp({
+    roleAddress: playInfo[1],
+    strength: baseInfo.strength,
+    agility: baseInfo.agility,
+    intelligence: baseInfo.intelligence,
+  })
 
   return {
     ...baseInfo,
+    mainProp,
     tokenId,
     income,
     incomeUsd: (income * bnxStore.goldPrice).toFixed(2),
@@ -305,7 +297,7 @@ async function getPlayerInfo(index: number, contract: Contract) {
   return {
     ...baseInfo,
     tokenId,
-  }
+  } as Hero
 }
 
 /**
@@ -574,5 +566,5 @@ getWorkingPlayers()
 </script>
 
 <style lang="scss" scoped>
-@import './style.scss';
+@import "./style.scss";
 </style>

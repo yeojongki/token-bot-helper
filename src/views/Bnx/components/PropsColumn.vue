@@ -24,7 +24,7 @@
       <div v-show="row.level > 1" class="upgrade-cost">
         升级成本:
         {{
-          getUpgradeCostBnx(row.level, bnxStore.goldPrice, bnxStore.bnxPrice)
+          getUpgradeCostBnx(1, row.level, bnxStore.goldPrice, bnxStore.bnxPrice)
         }}
         BNX
       </div>
@@ -57,14 +57,20 @@
 
   <el-table-column v-if="isMarketing" prop="price" width="100" label="回本">
     <template #default="{ row }">
-      <div class="price-row">
+      <div class="price-row" @click="copyRow(row)">
         <div
           v-if="!row.isAdvance"
         >零工:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 1 }) }}天</div>
         <div v-else>
-          <div>3级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 }) }}天</div>
-          <div>4级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 }) }}天</div>
-          <div>5级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 }) }}天</div>
+          <div
+            v-if="row.level <= 3"
+          >3级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 }) }}天</div>
+          <div
+            v-if="row.level <= 4"
+          >4级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 }) }}天</div>
+          <div
+            v-if="row.level <= 5"
+          >5级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 }) }}天</div>
         </div>
       </div>
     </template>
@@ -137,6 +143,7 @@ import {
   getPaybackCycle,
   getHeroMainProp,
 } from '../common'
+import type { Hero } from '../common'
 import { useBnxStore } from '@/store/bnx'
 import { computed } from 'vue-demi'
 
@@ -154,6 +161,10 @@ const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
  */
 function copyId(id: string) {
   copyText(id)
+}
+
+function copyRow(row: Hero) {
+  copyText(JSON.stringify(row))
 }
 
 function goOriginOrderPage(orderId: string) {
