@@ -3,6 +3,7 @@ import { providers, Wallet } from 'ethers'
 import { effect } from 'vue'
 import { useUserStore } from '@/store/user'
 import { defaultRpc } from '@/constants'
+import { usePrivateKey } from './usePrivateKey'
 
 let provider: null | providers.BaseProvider = null
 let wallet: null | Wallet = null
@@ -40,7 +41,8 @@ export function useActiveProvider() {
   }
 
   if (!wallet) {
-    wallet = new Wallet(import.meta.env.VITE_PRIVATE_KEY, provider!)
+    const privateKey = usePrivateKey()
+    wallet = new Wallet(privateKey, provider!)
   }
 
   return {

@@ -20,4 +20,8 @@ interface ImportMetaEnv {
    * 钱包账号地址
    */
   VITE_WALLET_ADDRESS: string
+  /**
+   * 方糖 SendKey
+   */
+  VITE_SC: string
 }

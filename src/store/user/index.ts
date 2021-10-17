@@ -7,6 +7,9 @@ import { providers, Wallet } from 'ethers'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import { defaultRpc } from '@/constants'
+import { userNamespace as namespace } from '@/constants/namespace'
+import { usePrivateKey } from '@/hooks/usePrivateKey'
+import { PRIVATEKEY_KEY } from '@/constants/storageKey'
 
 export interface TokenPriceMap {
   [chainId: number]: {
@@ -22,9 +25,9 @@ export interface TokenSortEvent {
   }
 }
 
-// const currentTimestamp = () => new Date().getTime()
+const TOKENS_KEY = 'tokens'
 
-const namespace = 'user'
+// const currentTimestamp = () => new Date().getTime()
 
 let provider = new providers.JsonRpcProvider(defaultRpc)
 let wallet = null as Wallet | null
@@ -37,10 +40,7 @@ export const useUserStore = defineStore({
     /**
      * 私钥
      */
-    privateKey:
-      process.env.NODE_ENV === 'production'
-        ? ''
-        : import.meta.env.VITE_PRIVATE_KEY,
+    privateKey: usePrivateKey(),
     /**
      * 当前节点
      */
@@ -61,7 +61,7 @@ export const useUserStore = defineStore({
     tokens: {
       [ChainId.MAINNET as number]: getFromStorage<TokenPriceMap>(
         namespace,
-        'tokens',
+        TOKENS_KEY,
       )?.[ChainId.MAINNET] ?? {
         [WBNB_TOKEN.address]: {
           chainId: WBNB_TOKEN.chainId,
@@ -120,6 +120,7 @@ export const useUserStore = defineStore({
      */
     setPrivateKey(privateKey: string) {
       this.privateKey = privateKey
+      setToStorage(namespace, PRIVATEKEY_KEY, privateKey)
     },
     /**
      * 将当前 token 储存到 localStorage 中
