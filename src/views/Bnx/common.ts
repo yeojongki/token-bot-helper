@@ -36,6 +36,22 @@ export interface Hero {
    */
   mainProp: number
   /**
+   * 高级工作最优回本周期
+   */
+  paybackCycle?: number
+  /**
+   * 3级回本周期
+   */
+  paybackCycle3?: number
+  /**
+   * 4级回本周期
+   */
+  paybackCycle4?: number
+  /**
+   * 5级回本周期
+   */
+  paybackCycle5?: number
+  /**
    * 市场交易时的代币类型
    */
   payType?: 'BNX' | 'GOLD'
@@ -63,7 +79,9 @@ export interface WorkingHero extends Hero {
  * 获取回本周期参数
  */
 export interface PaybackCycleParams {
-  workType: string
+  /**
+   * 主属性
+   */
   mainProp: number
   /**
    * 当前等级

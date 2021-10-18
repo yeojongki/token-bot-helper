@@ -107,17 +107,16 @@ import {
   ElMessage,
 } from 'element-plus'
 import { utils } from 'ethers'
-import { promisePoll, withPoll } from '@/utils'
+import { getTokenPrice, promisePoll, withPoll } from '@/utils'
 import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
-import { checkIsAdvancePlayer, getHeroMainProp, roleType } from './common'
+import { checkIsAdvancePlayer, getHeroMainProp, getPaybackCycle, roleType } from './common'
 import type { Hero, WorkingHero } from './common'
 import { get } from '@/utils/request'
 import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
-import { head } from 'lodash'
 
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
@@ -275,6 +274,17 @@ async function getList(page = 1, options?: object) {
 
           // 主属性
           item.mainProp = getHeroMainProp(item)
+
+          // 回本周期
+          item.paybackCycle3 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 })
+          item.paybackCycle4 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 })
+          item.paybackCycle5 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 })
+          
+          if (item.isAdvance) {
+            item.paybackCycle = Math.min(item.paybackCycle3, item.paybackCycle4, item.paybackCycle5)
+          } else {
+            item.paybackCycle = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 1 })
+          }
 
           return item
         })

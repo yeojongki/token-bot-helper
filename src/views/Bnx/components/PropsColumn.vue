@@ -55,23 +55,23 @@
     </template>
   </el-table-column>
 
-  <el-table-column v-if="isMarketing" prop="price" width="100" label="回本">
+  <el-table-column
+    v-if="isMarketing"
+    sortable
+    :sort-method="sortPaybackCycle"
+    width="100"
+    label="回本"
+  >
     <template #default="{ row }">
       <div class="price-row" @click="copyRow(row)">
-        <div
-          v-if="!row.isAdvance"
-        >零工:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 1 }) }}天</div>
+        {{ row.paybackCycle }} 天
+        <!-- <div v-if="!row.isAdvance">零工:{{ row.paybackCyclePartime }}天</div>
         <div v-else>
-          <div
-            v-if="row.level <= 3"
-          >3级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 }) }}天</div>
-          <div
-            v-if="row.level <= 4"
-          >4级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 }) }}天</div>
-          <div
-            v-if="row.level <= 5"
-          >5级:{{ getPaybackCycle({ ...row, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 }) }}天</div>
-        </div>
+        高级: {{row.paybackCycleAdvanceBest}}-->
+        <!-- <div v-if="row.level <= 3">3级:{{ row.paybackCycle3 }}天</div>
+          <div v-if="row.level <= 4">4级:{{ row.paybackCycle4 }}天</div>
+        <div v-if="row.level <= 5">5级:{{ row.paybackCycle5 }}天</div>-->
+        <!-- </div> -->
       </div>
     </template>
   </el-table-column>
@@ -155,6 +155,10 @@ const props = defineProps({
 const bnxStore = useBnxStore()
 const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
   contractAddress
+
+function sortPaybackCycle(a: Hero, b: Hero) {
+  return b.paybackCycle! - a.paybackCycle!
+}
 
 /**
  * 复制 token ID
