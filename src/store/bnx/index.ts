@@ -1,5 +1,5 @@
 import ERC20_ABI from '@/constants/erc20'
-import { BUSD_TOKEN } from '@/constants/tokens'
+import { BUSD_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { getTokenPrice } from '@/utils'
 import { BigNumber } from '@ethersproject/bignumber'
@@ -68,7 +68,7 @@ export const useBnxStore = defineStore({
     updateBnxPrice() {
       return new Promise((resolve, reject) => {
         const { provider } = useActiveProvider()
-        getTokenPrice(BUSD_TOKEN.address, this.bnxAddress, provider)
+        getTokenPrice(this.bnxAddress, BUSD_TOKEN.address, provider)
           .then((price) => {
             this.bnxPrice = price
             resolve(price)
@@ -80,12 +80,12 @@ export const useBnxStore = defineStore({
       })
     },
     /**
-     * 更新 bnx 价格
+     * 更新 gold 价格
      */
     updateGoldPrice() {
       return new Promise((resolve, reject) => {
         const { provider } = useActiveProvider()
-        getTokenPrice(BUSD_TOKEN.address, this.goldAddress, provider)
+        getTokenPrice(this.goldAddress, BUSD_TOKEN.address, provider)
           .then((price) => {
             this.goldPrice = price
             resolve(price)

@@ -19,7 +19,7 @@
         <div class="flex justify-between items-center">
           <div class="flex flex-1">
             <div class="item-symbol text-right">{{ element.symbol }}:</div>
-            <div>{{ element.address === WBNB_TOKEN.address ? tokensStore.ethPrice : formatTokenPrice(element.price ? (tokensStore.ethPrice / Number(element.price)) : null) }}</div>
+            <div>{{ element.address === WBNB_TOKEN.address ? tokensStore.ethPrice : formatTokenPrice(element.price ? (tokensStore.ethPrice * Number(element.price)) : null) }}</div>
           </div>
           <div>
             <el-button

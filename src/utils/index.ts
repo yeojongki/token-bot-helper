@@ -3,11 +3,7 @@ import {
   BETTER_TRADE_LESS_HOPS_THRESHOLD,
   WETHTokenAddress,
 } from '@/constants'
-import {
-  mainnetTokens,
-  mainnetTokensAddressMap,
-  USDT_TOKEN,
-} from '@/constants/tokens'
+import { mainnetTokensAddressMap } from '@/constants/tokens'
 import {
   ChainId,
   Token,
@@ -133,7 +129,6 @@ export async function getTokenPrice(
 
   const typedValueParsed = utils.parseUnits('1', baseToken.decimals).toString()
   const parsedAmount = new TokenAmount(baseToken, JSBI.BigInt(typedValueParsed))
-
   const allowedPairs = await getPairs(provider, baseToken, targetToken)
   // const bestTradeExactIn = Trade.bestTradeExactIn(
   //   allowedPairs,
@@ -167,7 +162,7 @@ export async function getTokenPrice(
   //   console.log(Number(bestTradeSoFar?.executionPrice.toSignificant(6)))
   // }
 
-  return Number(bestTradeSoFar?.executionPrice.toSignificant(6))
+  return Number(bestTradeSoFar?.executionPrice.invert().toSignificant(6))
   // const trade = new Trade(
   //   route,
   //   new TokenAmount(WETH[ChainId.MAINNET], '1000000000000000000'),

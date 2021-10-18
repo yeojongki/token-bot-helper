@@ -61,8 +61,8 @@ export const useTokensStore = defineStore({
       try {
         this.loading = true
         const price = await getTokenPrice(
-          USDT_TOKEN.address,
           WETHTokenAddress,
+          USDT_TOKEN.address,
           provider,
         )
 
