@@ -5,6 +5,15 @@ import VitePluginElementPlus from 'vite-plugin-element-plus'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  server: {
+    proxy: {
+      '/bnxApi': {
+        target: 'https://www.binaryx.pro',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/bnxApi/, ''),
+      },
+    },
+  },
   plugins: [
     vue(),
     VitePluginElementPlus({

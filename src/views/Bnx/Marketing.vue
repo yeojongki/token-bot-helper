@@ -81,10 +81,10 @@
       <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
     </el-card>
 
+    <!-- :default-sort="{ prop: 'price', order: 'ascending' }" -->
     <el-table
       row-key="tokenId"
       :height="500"
-      :default-sort="{ prop: 'price', order: 'ascending' }"
       :data="marketList"
       :border="true"
       @selection-change="selectionChange"
@@ -107,7 +107,7 @@ import {
   ElMessage,
 } from 'element-plus'
 import { utils } from 'ethers'
-import { getTokenPrice, promisePoll, withPoll } from '@/utils'
+import { promisePoll, } from '@/utils'
 import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
 import { checkIsAdvancePlayer, getHeroMainProp, getPaybackCycle, roleType } from './common'
@@ -189,7 +189,7 @@ async function getList(page = 1, options?: object) {
   try {
     const params = {
       page: 1,
-      page_size: 100,
+      page_size: 50,
       status: 'selling',
       name: '',
       // sort: 'price',
@@ -199,7 +199,7 @@ async function getList(page = 1, options?: object) {
       ...options,
     }
 
-    const { code, data } = await get(`https://www.binaryx.pro/getSales`, params)
+    const { code, data } = await get(`/bnxApi/getSales`, params)
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
       // 关闭监听之后不刷新列表
@@ -279,7 +279,7 @@ async function getList(page = 1, options?: object) {
           item.paybackCycle3 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 })
           item.paybackCycle4 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 })
           item.paybackCycle5 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 })
-          
+
           if (item.isAdvance) {
             item.paybackCycle = Math.min(item.paybackCycle3, item.paybackCycle4, item.paybackCycle5)
           } else {
