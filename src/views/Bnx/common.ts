@@ -40,6 +40,10 @@ export interface Hero {
    */
   paybackCycle?: number
   /**
+   * 高级工作最优回本周期的等级
+   */
+  paybackCycleLevel?: number
+  /**
    * 3级回本周期
    */
   paybackCycle3?: number
@@ -67,8 +71,22 @@ export interface WorkingHero extends Hero {
    * 工作类型(合约)
    */
   workType: string
+  /**
+   * 当前收益
+   */
   income: number
-  incomeUsd: string
+  /**
+   * 当前收益 (美元)
+   */
+  incomeUsd: number
+  /**
+   * 每日收益
+   */
+  goldDaily: number
+  /**
+   * 每日收益 (美元)
+   */
+  goldDailyUsd: number
   /**
    * 当前是否在做高级工作
    */
@@ -409,8 +427,14 @@ export function getHeroMainProp(hero: {
   return mainProp
 }
 
-function toFixed1(number: number) {
-  return Number(number.toFixed(1))
+/**
+ * toFixed 后转为 number
+ * @param number
+ * @param fixCount
+ * @returns
+ */
+export function toFixed(number: number, fixCount = 2) {
+  return Number(number.toFixed(fixCount))
 }
 
 /**
@@ -445,7 +469,7 @@ export function getPaybackCycle({
 
   // 不合格的只当普通零工一级处理
   if (!isAdvance) {
-    return toFixed1(usdPrice / goldDailyUsd)
+    return toFixed(usdPrice / goldDailyUsd, 1)
   }
 
   // 高级工作
@@ -453,6 +477,6 @@ export function getPaybackCycle({
   const costBnx = getUpgradeCostBnx(level, targetLevel, goldPrice, bnxPrice)
   const costBnxUsd = costBnx * bnxPrice
 
-  const cycle = toFixed1((costBnxUsd + usdPrice) / goldDailyUsd)
+  const cycle = toFixed((costBnxUsd + usdPrice) / goldDailyUsd, 1)
   return cycle
 }

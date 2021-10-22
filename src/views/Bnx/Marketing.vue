@@ -105,12 +105,18 @@ import {
   ElTable,
   ElButton,
   ElMessage,
+  ElNotification,
 } from 'element-plus'
 import { utils } from 'ethers'
-import { promisePoll, } from '@/utils'
+import { promisePoll } from '@/utils'
 import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
-import { checkIsAdvancePlayer, getHeroMainProp, getPaybackCycle, roleType } from './common'
+import {
+  checkIsAdvancePlayer,
+  getHeroMainProp,
+  getPaybackCycle,
+  roleType,
+} from './common'
 import type { Hero, WorkingHero } from './common'
 import { get } from '@/utils/request'
 import SaleNewABI from './abi/saleNew'
@@ -126,7 +132,7 @@ const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 /**
  * 请求列表间隔
  */
-const getListInterval = ref(400)
+const getListInterval = ref(1000)
 
 /**
  * true 开启
@@ -151,7 +157,7 @@ const autoBuy = reactive({
   /**
    * 购买最低价
    */
-  minPrice: 0.45,
+  minPrice: 0.44,
 
   gasLimit: 530000,
   gasPrice: 6,
@@ -188,12 +194,13 @@ function selectionChange(val: WorkingHero[]) {
 async function getList(page = 1, options?: object) {
   try {
     const params = {
-      page: 1,
-      page_size: 50,
+      page,
+      page_size: 70,
       status: 'selling',
       name: '',
       // sort: 'price',
       // direction: 'asc',
+      direction: 'desc',
       sort: 'time',
       career: '',
       ...options,
@@ -207,8 +214,8 @@ async function getList(page = 1, options?: object) {
         return
       }
 
-      marketList.value = items
-        .map((item: Hero & { price: number } & Record<string, any>) => {
+      marketList.value = items.map(
+        (item: Hero & { price: number } & Record<string, any>) => {
           // 价格
           item.price = Number(utils.formatEther(item.price))
 
@@ -264,7 +271,7 @@ async function getList(page = 1, options?: object) {
             item.roleAddress,
           ])
 
-          // 交易代币类型 
+          // 交易代币类型
           // warn: 可能以后会有其他类型
           item.payType = payTokenTypeMap[item.pay_addr]
           item.usdPrice =
@@ -276,21 +283,63 @@ async function getList(page = 1, options?: object) {
           item.mainProp = getHeroMainProp(item)
 
           // 回本周期
-          item.paybackCycle3 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 3 })
-          item.paybackCycle4 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 4 })
-          item.paybackCycle5 = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 5 })
-
           if (item.isAdvance) {
-            item.paybackCycle = Math.min(item.paybackCycle3, item.paybackCycle4, item.paybackCycle5)
+            item.paybackCycle3 = getPaybackCycle({
+              ...item,
+              usdPrice: item.usdPrice,
+              bnxPrice: bnxStore.bnxPrice,
+              goldPrice: bnxStore.goldPrice,
+              targetLevel: 3,
+            })
+            item.paybackCycle4 = getPaybackCycle({
+              ...item,
+              usdPrice: item.usdPrice,
+              bnxPrice: bnxStore.bnxPrice,
+              goldPrice: bnxStore.goldPrice,
+              targetLevel: 4,
+            })
+            item.paybackCycle5 = getPaybackCycle({
+              ...item,
+              usdPrice: item.usdPrice,
+              bnxPrice: bnxStore.bnxPrice,
+              goldPrice: bnxStore.goldPrice,
+              targetLevel: 5,
+            })
+
+            // 取最小值
+            item.paybackCycle = Math.min(
+              item.paybackCycle3,
+              item.paybackCycle4,
+              item.paybackCycle5,
+            )
+            // 最小值对应等级
+            item.paybackCycleLevel =
+              item.paybackCycle === item.paybackCycle3
+                ? 3
+                : item.paybackCycle === item.paybackCycle4
+                  ? 4
+                  : item.paybackCycle === item.paybackCycle5
+                    ? 5
+                    : 0
           } else {
-            item.paybackCycle = getPaybackCycle({ ...item, usdPrice: item.usdPrice, bnxPrice: bnxStore.bnxPrice, goldPrice: bnxStore.goldPrice, targetLevel: 1 })
+            item.paybackCycle = getPaybackCycle({
+              ...item,
+              usdPrice: item.usdPrice,
+              bnxPrice: bnxStore.bnxPrice,
+              goldPrice: bnxStore.goldPrice,
+              targetLevel: 1,
+            })
           }
 
           return item
-        })
-        .sort((a: any, b: any) => a.block_number - b.block_number)
+        },
+      )
+      // .sort((a: any, b: any) => a.block_number - b.block_number)
     }
-  } finally {
+  } catch (err) {
+    ElNotification.error!({
+      message: '请求失败',
+    })
   }
 }
 
@@ -302,8 +351,8 @@ async function buySelected() {
     if (bnxStore.bnxBalance >= item.price) {
       buyPlayer(item.order_id, item.price)
     } else {
-      ElMessage.error("余额不足")
-      console.error("余额不足")
+      ElMessage.error('余额不足')
+      console.error('余额不足')
     }
   })
 }
@@ -390,7 +439,6 @@ pollList.start()
 onUnmounted(() => {
   pollList.stop()
 })
-
 </script>
 
 <style lang="scss" scoped>

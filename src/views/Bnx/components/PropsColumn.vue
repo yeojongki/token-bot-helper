@@ -46,7 +46,16 @@
     </template>
   </el-table-column>
 
-  <el-table-column v-if="isMarketing" prop="price" sortable label="价格">
+  <el-table-column v-if="isWorking" prop="goldDaily" label="日收益" sortable width="90">
+    <template #default="{ row }">
+      <div class="price-row">
+        <div>{{ row.goldDaily }}</div>
+        <div class="price-usd">≈ ${{ row.goldDailyUsd }}</div>
+      </div>
+    </template>
+  </el-table-column>
+
+  <el-table-column v-if="isMarketing" prop="price" sortable label="价格" width="120">
     <template #default="{ row }">
       <div class="price-row">
         <div>{{ row.price }} {{ row.payType }}</div>
@@ -55,23 +64,26 @@
     </template>
   </el-table-column>
 
-  <el-table-column
-    v-if="isMarketing"
-    sortable
-    :sort-method="sortPaybackCycle"
-    width="100"
-    label="回本"
-  >
+  <el-table-column v-if="isMarketing" sortable prop="paybackCycle" width="120" label="回本">
     <template #default="{ row }">
       <div class="price-row" @click="copyRow(row)">
-        {{ row.paybackCycle }} 天
-        <!-- <div v-if="!row.isAdvance">零工:{{ row.paybackCyclePartime }}天</div>
+        <!-- {{ row.paybackCycle }} 天 -->
+        <div v-if="!row.isAdvance">零工:{{ row.paybackCycle }}天</div>
         <div v-else>
-        高级: {{row.paybackCycleAdvanceBest}}-->
-        <!-- <div v-if="row.level <= 3">3级:{{ row.paybackCycle3 }}天</div>
-          <div v-if="row.level <= 4">4级:{{ row.paybackCycle4 }}天</div>
-        <div v-if="row.level <= 5">5级:{{ row.paybackCycle5 }}天</div>-->
-        <!-- </div> -->
+          <!-- 高级: {{ row.paybackCycleAdvanceBest }} -->
+          <div
+            v-if="row.level <= 3"
+            :class="{ 'text-red': row.paybackCycleLevel === 3 }"
+          >3级:{{ row.paybackCycle3 }}天</div>
+          <div
+            v-if="row.level <= 4"
+            :class="{ 'text-red': row.paybackCycleLevel === 4 }"
+          >4级:{{ row.paybackCycle4 }}天</div>
+          <div
+            v-if="row.level <= 5"
+            :class="{ 'text-red': row.paybackCycleLevel === 5 }"
+          >5级:{{ row.paybackCycle5 }}天</div>
+        </div>
       </div>
     </template>
   </el-table-column>
@@ -137,17 +149,11 @@
 <script setup lang="ts">
 import copyText from '@/utils/copyText'
 import { ElTableColumn } from 'element-plus'
-import {
-  contractAddress,
-  getUpgradeCostBnx,
-  getPaybackCycle,
-  getHeroMainProp,
-} from '../common'
+import { contractAddress, getUpgradeCostBnx } from '../common'
 import type { Hero } from '../common'
 import { useBnxStore } from '@/store/bnx'
-import { computed } from 'vue-demi'
 
-const props = defineProps({
+defineProps({
   isWorking: Boolean,
   isMarketing: Boolean,
 })
@@ -156,10 +162,6 @@ const bnxStore = useBnxStore()
 const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
   contractAddress
 
-function sortPaybackCycle(a: Hero, b: Hero) {
-  return b.paybackCycle! - a.paybackCycle!
-}
-
 /**
  * 复制 token ID
  */
@@ -167,10 +169,16 @@ function copyId(id: string) {
   copyText(id)
 }
 
+/**
+ * 复制当前行 JSON 数据
+ */
 function copyRow(row: Hero) {
   copyText(JSON.stringify(row))
 }
 
+/**
+ * 跳转 bnx 官方英雄详情页面
+ */
 function goOriginOrderPage(orderId: string) {
   window.open(
     `https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`,

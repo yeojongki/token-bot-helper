@@ -30,8 +30,18 @@
 
       <!-- :disabled="!workingSelection.length" -->
       <div>
-        <el-button class="ml-10" type="primary" @click="batchGetAwards(0)">批量获取受益</el-button>
-        <el-button class="ml-10" type="primary" @click="batchQuitWork(0)">批量退出工作</el-button>
+        <el-button
+          class="ml-10"
+          type="primary"
+          :disabled="!workingSelection.length"
+          @click="batchGetAwards(0)"
+        >批量获取受益</el-button>
+        <el-button
+          class="ml-10"
+          type="primary"
+          :disabled="!workingSelection.length"
+          @click="batchQuitWork(0)"
+        >批量退出工作</el-button>
       </div>
     </div>
 
@@ -57,7 +67,12 @@
   <el-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
     <div class="mb-10 flex items-center justify-end">
       <!-- :disabled="!noWorkingSelection.length"  -->
-      <el-button class="ml-10" type="primary" @click="batchGoWork(0)">批量打工</el-button>
+      <el-button
+        class="ml-10"
+        type="primary"
+        :disabled="!noWorkingSelection.length"
+        @click="batchGoWork(0)"
+      >批量打工</el-button>
     </div>
 
     <div class="flex mb-20">
@@ -98,6 +113,7 @@ import {
   checkIsAdvancePlayer,
   getGoldDaily,
   getHeroMainProp,
+  toFixed,
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { useBnxStore } from '@/store/bnx'
@@ -271,12 +287,17 @@ async function getWorkPlayerDetail(
     intelligence: baseInfo.intelligence,
   })
 
+  // 每日金币
+  const goldDaily = toFixed(getGoldDaily(workType, mainProp, baseInfo.level))
+
   return {
     ...baseInfo,
     mainProp,
     tokenId,
+    goldDaily,
+    goldDailyUsd: toFixed(goldDaily * bnxStore.goldPrice),
     income,
-    incomeUsd: (income * bnxStore.goldPrice).toFixed(2),
+    incomeUsd: toFixed(income * bnxStore.goldPrice),
     isAdvanceJob,
     workType,
   }
@@ -466,11 +487,11 @@ function getPlayersNoWorking() {
  * 递归执行打工 (目前只做了获取最普通工作)
  */
 async function batchGoWork(index = 0) {
-  if (noWorkingList.value[index]?.tokenId) {
+  if (noWorkingSelection.value[index]?.tokenId) {
     ElMessage.info(`开始打工 [${index}]`)
     const tx = await contracts.MiningAddress.work(
       contractAddress.LinggongAddress,
-      noWorkingList.value[index].tokenId,
+      noWorkingSelection.value[index].tokenId,
     )
     await tx.wait()
     console.log(`已开始打工 [${index}]`)
@@ -550,7 +571,13 @@ async function quitWorkHelper(tokenId: string) {
 
 function batchQuitWork(index = 0) {
   if (workingSelection.value[index]?.tokenId) {
+    const msg = ElMessage({
+      type: 'info',
+      duration: 0,
+      message: `${workingSelection.value[index]?.tokenId} 正在退出工作`,
+    })
     quitWorkHelper(workingSelection.value[index].tokenId).then(() => {
+      msg.close()
       index++
       batchQuitWork(index)
     })
