@@ -190,3 +190,13 @@ export async function getBlockNumber(provider: providers.BaseProvider) {
     return null
   }
 }
+
+/**
+ * toFixed 后转为 number
+ * @param number
+ * @param fixCount
+ * @returns
+ */
+export function toFixed(number: number, fixCount = 2) {
+  return Number(number.toFixed(fixCount))
+}

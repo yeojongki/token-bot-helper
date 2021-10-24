@@ -5,6 +5,7 @@ import roleABI from './abi/role'
 import playInfoABI from './abi/playInfo'
 import workTypeABI from './abi/workType'
 import bookMangeABI from './abi/bookManage'
+import { toFixed } from '@/utils'
 
 export interface Hero {
   tokenId: string
@@ -425,16 +426,6 @@ export function getHeroMainProp(hero: {
   }
 
   return mainProp
-}
-
-/**
- * toFixed 后转为 number
- * @param number
- * @param fixCount
- * @returns
- */
-export function toFixed(number: number, fixCount = 2) {
-  return Number(number.toFixed(fixCount))
 }
 
 /**

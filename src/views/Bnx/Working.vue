@@ -113,12 +113,12 @@ import {
   checkIsAdvancePlayer,
   getGoldDaily,
   getHeroMainProp,
-  toFixed,
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { useBnxStore } from '@/store/bnx'
 import PropsColumn from './components/PropsColumn.vue'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
+import { toFixed } from '@/utils'
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)

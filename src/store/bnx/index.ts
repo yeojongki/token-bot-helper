@@ -1,5 +1,5 @@
 import ERC20_ABI from '@/constants/erc20'
-import { BUSD_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
+import { BUSD_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { getTokenPrice } from '@/utils'
 import { BigNumber } from '@ethersproject/bignumber'

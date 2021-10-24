@@ -132,7 +132,7 @@ const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 /**
  * 请求列表间隔
  */
-const getListInterval = ref(1000)
+const getListInterval = ref(500)
 
 /**
  * true 开启
@@ -157,9 +157,8 @@ const autoBuy = reactive({
   /**
    * 购买最低价
    */
-  minPrice: 0.44,
-
-  gasLimit: 530000,
+  minPrice: 0.45,
+  gasLimit: 540000,
   gasPrice: 6,
 })
 

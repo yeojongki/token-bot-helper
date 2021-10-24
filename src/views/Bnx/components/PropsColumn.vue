@@ -140,7 +140,7 @@
     <template #default="{ row }">
       <div
         class="id-column"
-        @click="copyId(row.seller)"
+        @click="goBscScan(row.seller)"
       >{{ row.seller.slice(0, 4) }}...{{ row.seller.slice(-4) }}</div>
     </template>
   </el-table-column>
@@ -174,6 +174,16 @@ function copyId(id: string) {
  */
 function copyRow(row: Hero) {
   copyText(JSON.stringify(row))
+}
+
+/**
+ * 跳转 bsc scan 卖家地址
+ */
+function goBscScan(address: string) {
+  window.open(
+    `https://bscscan.com/address/${address}`,
+    '_blank',
+  )
 }
 
 /**
