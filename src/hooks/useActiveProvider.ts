@@ -47,7 +47,7 @@ export function useActiveProvider() {
 
   return {
     chainId: ChainId.MAINNET,
-    account: import.meta.env.VITE_WALLET_ADDRESS,
+    account: wallet.address,
     provider: provider as providers.BaseProvider,
     wallet: wallet as Wallet,
   }

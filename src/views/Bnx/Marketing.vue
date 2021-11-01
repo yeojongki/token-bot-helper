@@ -23,7 +23,8 @@
             size="small"
             @click="toggleShouldWatch()"
             :type="watchOpened ? 'success' : 'info'"
-          >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button>
+            >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button
+          >
         </div>
       </template>
       <div class="flex items-center mr-10">
@@ -62,7 +63,12 @@
 
         <div class="flex items-center ml-10">
           <div class="mr-10">Gas Price:</div>
-          <el-input-number size="small" v-model="autoBuy.gasPrice" :step-strictly="true" :step="1"></el-input-number>
+          <el-input-number
+            size="small"
+            v-model="autoBuy.gasPrice"
+            :step-strictly="true"
+            :step="1"
+          ></el-input-number>
         </div>
 
         <div class="flex items-center ml-10">
@@ -78,7 +84,67 @@
     </el-card>
 
     <el-card class="mt-20 mb-20" header="操作">
-      <el-button type="primary" :disabled="!selection.length" @click="buySelected">购买选中</el-button>
+      <el-button
+        type="primary"
+        :disabled="!selection.length"
+        @click="buySelected"
+        >购买选中</el-button
+      >
+    </el-card>
+
+    <el-card class="mt-20 mb-20" header="搜索参数">
+      <el-form :model="searchParams">
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="searchParams.status">
+            <el-option value="" label="全部"></el-option>
+            <el-option value="selling" label="出售中"></el-option>
+            <el-option value="finish" label="已结束"></el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="角色" prop="career">
+          <el-select v-model="searchParams.career">
+            <el-option value="" label="全部"></el-option>
+            <el-option
+              v-for="item in roleList"
+              :label="item.name"
+              :value="item.value"
+              >{{ item.name }}</el-option
+            >
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="排序属性" prop="sort">
+          <el-select v-model="searchParams.sort">
+            <el-option value="total" label="总属性值"></el-option>
+            <el-option value="price" label="价格"></el-option>
+            <el-option value="time" label="时间"></el-option>
+            <el-option value="strength" label="力量"></el-option>
+            <el-option value="agility" label="敏捷"></el-option>
+            <el-option value="physique" label="体质"></el-option>
+            <el-option value="volition" label="意志"></el-option>
+            <el-option value="brains" label="智力"></el-option>
+            <el-option value="charm" label="精神"></el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="升降序" prop="direction">
+          <el-select v-model="searchParams.direction">
+            <el-option value="desc" label="降序"></el-option>
+            <el-option value="asc" label="升序"></el-option>
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="分页数量" prop="page_size">
+          <el-input-number v-model="searchParams.page_size"></el-input-number>
+        </el-form-item>
+
+        <el-form-item>
+          <async-button :onSuccess="onGetListSuccess" :api="getList"
+            >查询</async-button
+          >
+        </el-form-item>
+      </el-form>
     </el-card>
 
     <!-- :default-sort="{ prop: 'price', order: 'ascending' }" -->
@@ -106,24 +172,35 @@ import {
   ElButton,
   ElMessage,
   ElNotification,
+  ElForm,
+  ElFormItem,
+  ElSelect,
+  ElOption,
 } from 'element-plus'
 import { utils } from 'ethers'
-import { promisePoll } from '@/utils'
 import { effect, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import qs from 'qs'
 import { useRef } from '@/hooks/useRef'
 import {
   checkIsAdvancePlayer,
   getHeroMainProp,
   getPaybackCycle,
   roleType,
+  roleList,
 } from './common'
 import type { Hero, WorkingHero } from './common'
+import { promisePoll } from '@/utils'
 import { get } from '@/utils/request'
 import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
+import AsyncButton from '@/components/AsyncButton/index.vue'
+import { bnxNamespace } from '@/constants/namespace'
+import { getFromStorage, setToStorage } from '@/utils/storage'
 
+const router = useRouter()
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
 const newSaleAddress = '0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F'
@@ -132,7 +209,7 @@ const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
 /**
  * 请求列表间隔
  */
-const getListInterval = ref(500)
+const getListInterval = ref(2500)
 
 /**
  * true 开启
@@ -176,6 +253,32 @@ const payTokenTypeMap: Record<string, Hero['payType']> = {
 }
 
 /**
+ * 存储搜索 key
+ */
+const BNX_SEARCH_KEY = 'searchParams'
+
+/**
+ * 读取 storage 中的搜索参数
+ */
+const storageSearchParams = getFromStorage<string>(bnxNamespace, BNX_SEARCH_KEY)
+
+/**
+ * 搜索参数
+ */
+const searchParams = reactive({
+  status: 'selling',
+  name: '',
+  direction: 'desc',
+  sort: 'time',
+  career: '',
+  page_size: 77,
+  ...router.currentRoute.value.query,
+  ...(storageSearchParams
+    ? JSON.parse(storageSearchParams)
+    : Object.create(null)),
+})
+
+/**
  * 列表勾选事件
  */
 function selectionChange(val: WorkingHero[]) {
@@ -190,28 +293,24 @@ function selectionChange(val: WorkingHero[]) {
 /**
  * 获取市场列表
  */
-async function getList(page = 1, options?: object) {
+async function getList(page = 1) {
   try {
     const params = {
       page,
       page_size: 70,
-      status: 'selling',
-      name: '',
-      // sort: 'price',
-      // direction: 'asc',
-      direction: 'desc',
-      sort: 'time',
-      career: '',
-      ...options,
+      ...searchParams,
     }
 
-    const { code, data } = await get(`/bnxApi/getSales`, params)
+    const { code, data } = await get(
+      `https://market.binaryx.pro/getSales`,
+      params,
+    )
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
       // 关闭监听之后不刷新列表
-      if (!watchOpened.value) {
-        return
-      }
+      // if (!watchOpened.value) {
+      //   return
+      // }
 
       marketList.value = items.map(
         (item: Hero & { price: number } & Record<string, any>) => {
@@ -316,10 +415,10 @@ async function getList(page = 1, options?: object) {
               item.paybackCycle === item.paybackCycle3
                 ? 3
                 : item.paybackCycle === item.paybackCycle4
-                  ? 4
-                  : item.paybackCycle === item.paybackCycle5
-                    ? 5
-                    : 0
+                ? 4
+                : item.paybackCycle === item.paybackCycle5
+                ? 5
+                : 0
           } else {
             item.paybackCycle = getPaybackCycle({
               ...item,
@@ -340,6 +439,17 @@ async function getList(page = 1, options?: object) {
       message: '请求失败',
     })
   }
+}
+
+/**
+ * 请求列表成功后保存查询参数到 localStorage
+ */
+function onGetListSuccess() {
+  const { path } = router.currentRoute.value
+  const query = qs.stringify(searchParams)
+  router.replace(`${path}?${query}`)
+
+  setToStorage(bnxNamespace, BNX_SEARCH_KEY, JSON.stringify(searchParams))
 }
 
 /**
@@ -431,8 +541,10 @@ effect(() => {
   }
 })
 
-// 执行
-pollList.start()
+if (watchOpened.value) {
+  // 执行
+  pollList.start()
+}
 
 // 卸载移除轮训定时器
 onUnmounted(() => {
@@ -441,5 +553,5 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-@import "./style.scss";
+@import './style.scss';
 </style>

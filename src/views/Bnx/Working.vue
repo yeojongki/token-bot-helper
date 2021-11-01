@@ -25,7 +25,10 @@
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
-        <el-input-number v-model="batcGetAwardsMin" class="ml-10 mr-10"></el-input-number>
+        <el-input-number
+          v-model="batcGetAwardsMin"
+          class="ml-10 mr-10"
+        ></el-input-number>
       </div>
 
       <!-- :disabled="!workingSelection.length" -->
@@ -35,13 +38,15 @@
           type="primary"
           :disabled="!workingSelection.length"
           @click="batchGetAwards(0)"
-        >批量获取受益</el-button>
+          >批量获取受益</el-button
+        >
         <el-button
           class="ml-10"
           type="primary"
           :disabled="!workingSelection.length"
           @click="batchQuitWork(0)"
-        >批量退出工作</el-button>
+          >批量退出工作</el-button
+        >
       </div>
     </div>
 
@@ -65,19 +70,29 @@
   </el-card>
 
   <el-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
-    <div class="mb-10 flex items-center justify-end">
+    <div class="flex mb-10">
+      <el-input
+        v-model="transferTo"
+        placeholder="请输入将要转移到的钱包地址"
+        class="mr-10"
+      ></el-input>
+      <el-button
+        :disabled="transferTo.length !== 42 || !noWorkingSelection.length"
+        type="primary"
+        @click="transferRole(0)"
+        >转移选中角色</el-button
+      >
+    </div>
+
+    <div class="mb-20 flex items-center justify-end">
       <!-- :disabled="!noWorkingSelection.length"  -->
       <el-button
         class="ml-10"
         type="primary"
         :disabled="!noWorkingSelection.length"
         @click="batchGoWork(0)"
-      >批量打工</el-button>
-    </div>
-
-    <div class="flex mb-20">
-      <el-input v-model="transferTo" placeholder="请输入将要转移到的钱包地址" class="mr-10"></el-input>
-      <el-button :disabled="transferTo.length !== 42" type="primary" @click="transferRole(0)">转移选中角色</el-button>
+        >批量打工</el-button
+      >
     </div>
 
     <el-table
@@ -88,6 +103,29 @@
     >
       <props-column></props-column>
     </el-table>
+  </el-card>
+
+  <el-card class="page-bnx" header="工具">
+    <div class="flex">
+      <!-- <el-input-number
+        v-model="batchNewPlayerCount"
+        :step="1"
+        placeholder="请输入批量抽卡数量"
+        class="mr-10"
+      ></el-input-number> -->
+      <async-button
+        :disabled="bnxStore.bnxBalance < 1"
+        type="primary"
+        :api="getNewPlayerOne"
+        >抽卡1次</async-button
+      >
+      <async-button
+        :disabled="bnxStore.bnxBalance < 5"
+        type="primary"
+        :api="batchNewPlayer"
+        >批量抽卡5次</async-button
+      >
+    </div>
   </el-card>
 </template>
 
@@ -101,6 +139,7 @@ import {
   ElInput,
   ElButton,
   ElMessage,
+  ElNotification,
 } from 'element-plus'
 import { utils } from 'ethers'
 import { computed, ref } from 'vue'
@@ -119,6 +158,7 @@ import { useBnxStore } from '@/store/bnx'
 import PropsColumn from './components/PropsColumn.vue'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 import { toFixed } from '@/utils'
+import AsyncButton from '@/components/AsyncButton/index.vue'
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
@@ -130,7 +170,7 @@ bnxStore.updateBnxAndGold()
 /**
  * 角色转移到的目标地址
  */
-const transferTo = ref('')
+const transferTo = ref('0x055Ea612D6a422Bb6CA20722b570B9E33227858E')
 
 /**
  * 当前收益 / 每日收益 $
@@ -168,6 +208,7 @@ const workingSelection = ref<WorkingHero[]>([])
 const workingSelectionChange = (val: WorkingHero[]) => {
   workingSelection.value = val
 }
+
 /**
  * 未打工列表
  */
@@ -189,6 +230,11 @@ const noWorkingSelectionChange = (val: Hero[]) => {
  * 批量获取收入时的最低收入
  */
 const batcGetAwardsMin = ref(0)
+
+/**
+ * 批量抽卡数量
+ */
+const batchNewPlayerCount = ref(5)
 
 /**
  * 获取角色基础信息
@@ -396,6 +442,7 @@ async function batchGetAwards(index = 0) {
 }
 
 /**
+ * @deprecated
  * 收入总计
  */
 function getIncomeSummaries(param: {
@@ -501,9 +548,7 @@ async function batchGoWork(index = 0) {
   } else {
     ElMessage.success(`批量打工完成`)
     console.log(`批量打工完成`)
-    // 刷新打工/未打工列表
-    getPlayersNoWorking()
-    getWorkingPlayers()
+    requestList()
   }
 }
 
@@ -555,6 +600,8 @@ async function transferRole(index = 0) {
       type: 'success',
       message: '转移完成',
     })
+
+    requestList()
   }
 
   // ElMessage({
@@ -563,12 +610,18 @@ async function transferRole(index = 0) {
   // })
 }
 
+/**
+ * 批量退出工作具体执行
+ */
 async function quitWorkHelper(tokenId: string) {
   const tx = await contracts.MiningAddress.quitWork(tokenId)
   await tx.wait()
   ElMessage.success(`${tokenId} 已经退出工作`)
 }
 
+/**
+ * 递归执行批量退出工作
+ */
 function batchQuitWork(index = 0) {
   if (workingSelection.value[index]?.tokenId) {
     const msg = ElMessage({
@@ -583,14 +636,65 @@ function batchQuitWork(index = 0) {
     })
   } else {
     ElMessage.success('成功退出工作')
+    requestList()
   }
 }
 
-// 初始化列表
-getPlayersNoWorking()
-getWorkingPlayers()
+/**
+ * 批量抽卡
+ */
+async function batchNewPlayer() {
+  try {
+    const tx = await contracts.NewPlayInfoAddress.batchNewPlayer(
+      batchNewPlayerCount.value,
+      utils.parseUnits(`${batchNewPlayerCount.value}`, 'ether'),
+    )
+    await tx.wait()
+    ElMessage.success('批量抽卡成功')
+
+    requestList()
+  } catch (error) {
+    ElNotification({
+      type: 'error',
+      message: '批量抽卡失败',
+      duration: 0,
+    })
+    console.error(error)
+  }
+}
+
+/**
+ * 抽卡1次
+ */
+async function getNewPlayerOne() {
+  try {
+    const tx = await contracts.NewPlayInfoAddress.newPlayer(
+      1,
+      utils.parseUnits('1', 'ether'),
+    )
+    await tx.wait()
+    ElMessage.success('已抽卡1次')
+
+    requestList()
+  } catch (error) {
+    ElNotification({
+      type: 'error',
+      message: '抽卡1次失败',
+      duration: 0,
+    })
+    console.error(error)
+  }
+}
+
+// 获取打工/未打工列表
+const requestList = () => {
+  getPlayersNoWorking()
+  getWorkingPlayers()
+}
+
+requestList()
 </script>
 
 <style lang="scss" scoped>
-@import "./style.scss";
+@import './style.scss';
 </style>

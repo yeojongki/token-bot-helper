@@ -83,12 +83,6 @@ export const useUserStore = defineStore({
         (a, b) => a.sort! - b.sort!,
       )
     },
-    activeProvider: () => ({
-      chainId: ChainId.MAINNET,
-      account: import.meta.env.VITE_WALLET_ADDRESS,
-      provider,
-      wallet,
-    }),
   },
   actions: {
     /**

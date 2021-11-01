@@ -6,37 +6,63 @@
     label-position="top"
     :model="config"
   >
-    <el-form-item label="支出的 token 地址" prop="poolContract" :required="true">
+    <el-form-item
+      label="支出的 token 地址"
+      prop="poolContract"
+      :required="true"
+    >
       <div class="flex">
         <el-select class="w-full" v-model="config.poolContract">
-          <el-option v-for="item in baseTokens" :value="item.address" :label="item.name"></el-option>
+          <el-option
+            v-for="item in baseTokens"
+            :value="item.address"
+            :label="item.name"
+          ></el-option>
         </el-select>
       </div>
     </el-form-item>
 
     <el-form-item
-      :label="`获得的 token 地址${buyTokenPrice ? ` (当前价格：${buyTokenPrice})` : ''}`"
+      :label="`获得的 token 地址${
+        buyTokenPrice ? ` (当前价格：${buyTokenPrice})` : ''
+      }`"
       prop="buyContract"
       :required="true"
     >
       <div class="flex">
         <el-input v-model="config.buyContract" />
-        <async-button :api="approveToken" type="primary" class="ml-10">授权</async-button>
+        <async-button :api="approveToken" type="primary" class="ml-10"
+          >授权</async-button
+        >
         <el-button
           type="danger"
           :loading="status.loopPriceStatus === 'loading'"
           @click="loopTokenPrice"
-        >{{ status.loopPriceStatus === 'started' ? '停止' : '轮询' }}</el-button>
+          >{{
+            status.loopPriceStatus === 'started' ? '停止' : '轮询'
+          }}</el-button
+        >
       </div>
     </el-form-item>
 
-    <el-form-item class="flex-1" label="买入数量" prop="buyAmount" :required="true">
-      <el-input-number v-model="config.buyAmount" :min="1" />
+    <el-form-item
+      class="flex-1"
+      label="买入数量"
+      prop="buyAmount"
+      :required="true"
+    >
+      <el-input-number class="block" v-model="config.buyAmount" :min="1" />
     </el-form-item>
 
     <div class="flex">
       <el-form-item class="flex-1" label="滑点" prop="slippage">
-        <el-input-number v-model="config.slippage" :min="1" :max="100" :step="1" step-strictly />
+        <el-input-number
+          v-model="config.slippage"
+          :min="1"
+          :max="100"
+          :step="1"
+          step-strictly
+        />
       </el-form-item>
 
       <el-form-item class="flex-1 ml-10" label="池子规模" prop="minPoolSize">
@@ -57,14 +83,17 @@
     <el-form-item>
       <el-button type="primary" @click="submitForm">开始买入</el-button>
       <el-button @click="resetForm">重置配置</el-button>
-      <el-button @click="tokenListStore.updateEthPrice" :loading="tokenListStore.loading">更新 BNB 价格</el-button>
+      <el-button
+        @click="tokenListStore.updateEthPrice"
+        :loading="tokenListStore.loading"
+        >更新 BNB 价格</el-button
+      >
     </el-form-item>
   </el-form>
 </template>
 
 <script setup lang="ts">
 import {
-  ElMessage,
   ElForm,
   ElOption,
   ElFormItem,
@@ -72,16 +101,14 @@ import {
   ElInputNumber,
   ElButton,
   ElSelect,
-  ElRow,
-  ElCol,
 } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
 import { BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
-import { getBlockNumber, getTokenPrice, withPoll } from '@/utils'
+import { getTokenPrice, withPoll } from '@/utils'
 import { ROUTER_ADDRESS, WETHTokenAddress } from '@/constants'
 import AsyncButton from '@/components/AsyncButton/index.vue'
-import { ChainId, Fetcher, Token, TokenAmount, WETH } from '@pancakeswap/sdk'
+import { Token } from '@pancakeswap/sdk'
 import { Contract } from '@ethersproject/contracts'
 import ERC20_ABI from '@/constants/erc20'
 import { BigNumber, utils } from 'ethers'
@@ -145,10 +172,9 @@ onMounted(async () => {
 
 const status = reactive({
   running: false,
-  loopPriceStatus: '' as ('' | 'loading' | 'started'),
+  loopPriceStatus: '' as '' | 'loading' | 'started',
   loopPriceEnded: false,
 })
-
 
 // 初始基础代币
 const baseTokens = [WBNB_TOKEN, BUSD_TOKEN, USDT_TOKEN]
@@ -178,13 +204,15 @@ const approveToken = async () => {
 // 是否授权
 const checkApproved = async () => {
   try {
-    const currentAllowance: BigNumber = await swapInfo.buyContract?.allowance(account, ROUTER_ADDRESS)
+    const currentAllowance: BigNumber = await swapInfo.buyContract?.allowance(
+      account,
+      ROUTER_ADDRESS,
+    )
     // utils.parseEther(result)
     // return new TokenAmount(swapInfo.buyContract, result.toString())
-    console.log(utils.formatEther(currentAllowance));
+    console.log(utils.formatEther(currentAllowance))
   } catch (error) {
-    console.log(error);
-
+    console.log(error)
   }
 }
 

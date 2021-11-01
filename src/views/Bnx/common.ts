@@ -180,6 +180,28 @@ export const contractAddress = {
   Token1Address: '0xAB683C1E30FDbf14dF0d2936b9842aAbB8228090',
 }
 
+/**
+ * 角色列表
+ */
+export const roleList = [
+  {
+    name: '战士',
+    value: contractAddress.WarriorAddress,
+  },
+  {
+    name: '盗贼',
+    value: contractAddress.RobberAddress,
+  },
+  {
+    name: '法师',
+    value: contractAddress.MageAddress,
+  },
+  {
+    name: '游侠',
+    value: contractAddress.RangerAddress,
+  },
+]
+
 export const getContracts = (wallet: Wallet) => ({
   PlayInfoAddress: new Contract(
     contractAddress.PlayInfoAddress,

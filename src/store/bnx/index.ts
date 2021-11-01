@@ -1,4 +1,5 @@
 import ERC20_ABI from '@/constants/erc20'
+import { bnxNamespace } from '@/constants/namespace'
 import { BUSD_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { getTokenPrice } from '@/utils'
@@ -8,7 +9,7 @@ import { utils } from 'ethers'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 
 export const useBnxStore = defineStore({
-  id: 'bnx',
+  id: bnxNamespace,
   state: () => ({
     updateLoading: false,
     bnxPrice: 0,
