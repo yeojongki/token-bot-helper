@@ -239,7 +239,7 @@ function goBscScan(address: string) {
  */
 function goOriginOrderPage(orderId: string) {
   window.open(
-    `https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`,
+    `https://market.binaryx.pro/#/oneoffsale/detail/${orderId}`,
     '_blank',
   )
 }
