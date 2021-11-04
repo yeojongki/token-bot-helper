@@ -316,7 +316,7 @@ async function getList(page = 1) {
     }
 
     const { code, data } = await get(
-      `https://market.binaryx.pro/getSales`,
+      `https://xs32rpc4.dsceshi.cn/getSales`,
       params,
     )
     if (code === 0 && data?.result && data?.result?.items) {
