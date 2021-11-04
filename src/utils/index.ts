@@ -110,7 +110,6 @@ export async function getTokenPrice(
   outputTokenAddress: string,
   inputTokenAddress = WETHTokenAddress,
   provider: providers.BaseProvider,
-  // ethPrice: number,
 ) {
   const targetToken: Token =
     mainnetTokensAddressMap[outputTokenAddress] ??

@@ -120,8 +120,8 @@ export interface PaybackCycleParams {
 }
 
 export const contractAddress = {
-  PlayInfoAddress: '0x8b8de33B057aF4F089Dcb56F21Bc6B135F99276A',
-  NewPlayInfoAddress: '0x210d87BA2990082FF22eA15396303382B1FaEA56',
+  PlayInfoAddress: '0x79961F74D1E53CA480e4dDf5675D5A6D7B1852e7',
+  NewPlayInfoAddress: '0x79961F74D1E53CA480e4dDf5675D5A6D7B1852e7',
   MiningAddress: '0xe278BDF4541cc309b379F9A4E867F60fD6B7BC59',
   NewMiningAddress: '0x698E165F2897e4daC68671c4cDFf337bbC543767',
   BscAddress: '0x8C851d1a123Ff703BD1f9dabe631b69902Df5f97',
@@ -177,7 +177,6 @@ export const contractAddress = {
   gameManager: '0xfBB36Af639251427D390c0294e8745631333234f',
   FeeAddress: '0xaf6B62B020C88C52B5060B4Dbc938d2D872eA8F1',
   AirdropAddress: '0xEc39831c3b13dFfcffDE0aFcedd138F4bd0384f8',
-  Token1Address: '0xAB683C1E30FDbf14dF0d2936b9842aAbB8228090',
 }
 
 /**
@@ -257,7 +256,6 @@ export const getContracts = (wallet: Wallet) => ({
   // gameManager =
   // FeeAddress =
   // AirdropAddress =
-  // Token1Address: "0xAB683C1E30FDbf14dF0d2936b9842aAbB8228090"
 })
 
 /**

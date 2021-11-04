@@ -33,19 +33,19 @@
 
       <!-- :disabled="!workingSelection.length" -->
       <div>
-        <el-button
+        <async-button
           class="ml-10"
           type="primary"
           :disabled="!workingSelection.length"
-          @click="batchGetAwards(0)"
-          >批量获取受益</el-button
+          :api="batchGetAwards"
+          >批量获取受益</async-button
         >
-        <el-button
+        <async-button
           class="ml-10"
           type="primary"
           :disabled="!workingSelection.length"
-          @click="batchQuitWork(0)"
-          >批量退出工作</el-button
+          :api="batchQuitWork"
+          >批量退出工作</async-button
         >
       </div>
     </div>
@@ -76,22 +76,22 @@
         placeholder="请输入将要转移到的钱包地址"
         class="mr-10"
       ></el-input>
-      <el-button
+      <async-button
         :disabled="transferTo.length !== 42 || !noWorkingSelection.length"
         type="primary"
-        @click="transferRole(0)"
-        >转移选中角色</el-button
+        :api="transferRole"
+        >转移选中角色</async-button
       >
     </div>
 
     <div class="mb-20 flex items-center justify-end">
       <!-- :disabled="!noWorkingSelection.length"  -->
-      <el-button
+      <async-button
         class="ml-10"
         type="primary"
         :disabled="!noWorkingSelection.length"
-        @click="batchGoWork(0)"
-        >批量打工</el-button
+        :api="batchGoWork"
+        >批量打工</async-button
       >
     </div>
 
@@ -159,6 +159,8 @@ import PropsColumn from './components/PropsColumn.vue'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 import { toFixed } from '@/utils'
 import AsyncButton from '@/components/AsyncButton/index.vue'
+import { useNonceStore } from '@/store/nonce'
+import { TX_QUEUE_MAXIMUM } from '@/constants'
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
@@ -178,7 +180,7 @@ const transferTo = ref('0x055Ea612D6a422Bb6CA20722b570B9E33227858E')
 const totalRewards = computed(() => {
   let currentGold = 0
   let dailyGold = 0
-  workingList.value.forEach((item) => {
+  workingList.value.forEach(item => {
     const mainProp = getHeroMainProp(item)
 
     currentGold += item.income
@@ -419,26 +421,49 @@ async function getAwardByTokenId(tokenId: string, isAdvanceJob: boolean) {
 /**
  * 批量获取角色奖励
  */
-async function batchGetAwards(index = 0) {
-  const item = workingSelection.value[index]
-  if (item?.tokenId) {
-    ElMessage.info(`开始获取 ${item.tokenId}`)
+async function batchGetAwards() {
+  const msg = ElMessage({
+    type: 'info',
+    message: '批量获取角色奖励中, 请勿发生交易操作',
+    duration: 0,
+  })
 
-    if (item.income > batcGetAwardsMin.value) {
-      await getAwardByTokenId(item.tokenId, item.isAdvanceJob)
+  const nonceStore = useNonceStore()
+  await nonceStore.updateLatestNonce()
 
-      index++
-      await batchGetAwards(index)
-    } else {
-      ElMessage.info(`已跳过${item}, 低于最低收益${batcGetAwardsMin.value}`)
-      index++
-      await batchGetAwards(index)
-    }
-  } else {
-    ElMessage.success(`批量领取完成`)
-    // 刷新打工列表
-    getWorkingPlayers()
-  }
+  // 最大交易为64
+  const promises = workingSelection.value
+    // 过滤最低收益
+    .filter(item => item.incomeUsd > batcGetAwardsMin.value)
+    .slice(0, TX_QUEUE_MAXIMUM)
+    .map(({ tokenId, isAdvanceJob }, index) => {
+      const itemMsg = ElMessage({
+        type: 'info',
+        duration: 0,
+        message: `开始领取 ${tokenId}`,
+      })
+
+      const contract = isAdvanceJob
+        ? contracts.NewMiningAddress
+        : contracts.MiningAddress
+      contract
+        .getAward(tokenId, {
+          nonce: nonceStore.nonce + index,
+        })
+        .then((tx: any) => tx.wait())
+        .then(() => {
+          itemMsg.close()
+          ElMessage.success(`${tokenId}已领取`)
+        })
+        .catch((err: any) => console.error(err))
+    })
+
+  await Promise.all(promises)
+  msg.close()
+  console.log('批量领取完成')
+  ElMessage.success(`批量领取完成`)
+  // 刷新打工列表
+  getWorkingPlayers()
 }
 
 /**
@@ -459,7 +484,7 @@ function getIncomeSummaries(param: {
     }
 
     if (column.property === 'income') {
-      const values = data.map((item) => {
+      const values = data.map(item => {
         return Number(item[column.property as keyof WorkingHero])
       })
       sums[index] = `${values
@@ -485,7 +510,7 @@ function getPlayersNoWorking() {
     contracts.RobberAddress.balanceOf(account),
     contracts.MageAddress.balanceOf(account),
     contracts.RangerAddress.balanceOf(account),
-  ]).then((res) => {
+  ]).then(res => {
     const totalCountArray = res.map(Number)
     const [warriorCount, robberCount, mageCount, rangerCount] = totalCountArray
 
@@ -506,138 +531,150 @@ function getPlayersNoWorking() {
       promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
     }
 
-    Promise.all(promiseDatas).then((res) => {
+    Promise.all(promiseDatas).then(res => {
       noWorkingList.value = res
     })
   })
 }
 
-// 貌似不能调用 cannot estimate gas; transaction may fail or may require manual gas limit
-// async function testBatchWork() {
-//   const workTypes: string[] = [contractAddress.LinggongAddress, contractAddress.LinggongAddress]
-//   const tokenIds: string[] = [
-//     '30358607160919388292929668861537797297655737455296212743917161179304991392743',
-//     '100852451566718539641855015895912029584755492001156702522723502069426165390319'
-//   ]
-
-//   const tx = await contracts.NewMiningAddress.batchWork(
-//     workTypes,
-//     tokenIds
-//   )
-//   console.log(tx)
-//   await tx.wait()
-
-//   ElMessage.success(`批量打工完成`)
-// }
-
 /**
- * 递归执行打工 (目前只做了获取最普通工作)
+ * 批量打工 (目前只做了获取最普通工作)
  */
-async function batchGoWork(index = 0) {
-  if (noWorkingSelection.value[index]?.tokenId) {
-    ElMessage.info(`开始打工 [${index}]`)
-    const tx = await contracts.MiningAddress.work(
-      contractAddress.LinggongAddress,
-      noWorkingSelection.value[index].tokenId,
+async function batchGoWork() {
+  const msg = ElMessage({
+    type: 'info',
+    message: '批量打工中, 请勿发生交易操作',
+    duration: 0,
+  })
+
+  const nonceStore = useNonceStore()
+  await nonceStore.updateLatestNonce()
+
+  // 最大交易为64
+  const promises = noWorkingSelection.value
+    .slice(0, TX_QUEUE_MAXIMUM)
+    .map(({ tokenId }, index) =>
+      contracts.MiningAddress.work(contractAddress.LinggongAddress, tokenId, {
+        nonce: nonceStore.nonce + index,
+      })
+        .then((tx: any) => tx.wait())
+        .then(() => {
+          ElMessage.success(`${tokenId}已打工`)
+        })
+        .catch((err: any) => console.error(err)),
     )
-    await tx.wait()
-    console.log(`已开始打工 [${index}]`)
-    index++
 
-    batchGoWork(index)
-  } else {
-    ElMessage.success(`批量打工完成`)
-    console.log(`批量打工完成`)
-    requestList()
-  }
+  await Promise.all(promises)
+  msg.close()
+  ElMessage.success(`批量打工完成`)
+  console.log(`批量打工完成`)
+  requestList()
 }
 
 /**
- * 实际调用转移选中角色执行
+ * 批量转移选中角色执行
  */
-async function transferHelper(contract: Contract, tokenId: string) {
-  const tx = await contract.transferFrom(
-    wallet.address,
-    transferTo.value,
-    tokenId,
-  )
-  await tx.wait()
-  ElMessage.success(`转移${tokenId}成功`)
-}
-
-/**
- * 转移选中角色递归执行
- */
-async function transferRole(index = 0) {
+async function transferRole() {
   // await ElMessageBox.confirm(`确认转移 ${noWorkingList.value.length} 个角色到 ${transferTo.value} ?`)
   // TODO 授权
   // const approvedTx = await contracts.WarriorAddress.setApprovalForAll(contractAddress.NewMiningAddress, true)
   // await approvedTx.wait()
 
-  if (noWorkingSelection.value[index]?.tokenId) {
-    const item = noWorkingSelection.value[index]
-    let contract: Contract | null = null
+  const msg = ElMessage({
+    type: 'info',
+    message: '批量转移中, 请勿发生交易操作',
+    duration: 0,
+  })
 
-    if (item.roleAddress === contractAddress.WarriorAddress) {
-      contract = contracts.WarriorAddress
-    } else if (item.roleAddress === contractAddress.MageAddress) {
-      contract = contracts.MageAddress
-    } else if (item.roleAddress === contractAddress.RangerAddress) {
-      contract = contracts.RangerAddress
-    } else if (item.roleAddress === contractAddress.RobberAddress) {
-      contract = contracts.RobberAddress
-    }
+  const nonceStore = useNonceStore()
+  await nonceStore.updateLatestNonce()
 
-    if (contract) {
-      transferHelper(contract, item.tokenId).then(() => {
-        index++
-        transferRole(index)
-      })
-    }
-  } else {
-    console.log('转移完成')
-    ElMessage({
-      type: 'success',
-      message: '转移完成',
+  // 最大交易为64
+  const promises = noWorkingSelection.value
+    .slice(0, TX_QUEUE_MAXIMUM)
+    .map((item, index) => {
+      let contract: Contract | null = null
+
+      if (item.roleAddress === contractAddress.WarriorAddress) {
+        contract = contracts.WarriorAddress
+      } else if (item.roleAddress === contractAddress.MageAddress) {
+        contract = contracts.MageAddress
+      } else if (item.roleAddress === contractAddress.RangerAddress) {
+        contract = contracts.RangerAddress
+      } else if (item.roleAddress === contractAddress.RobberAddress) {
+        contract = contracts.RobberAddress
+      }
+
+      if (contract) {
+        return contract
+          .transferFrom(wallet.address, transferTo.value, item.tokenId, {
+            nonce: nonceStore.nonce + index,
+          })
+          .then((tx: any) => tx.wait())
+          .then(() => {
+            ElMessage.success(`转移${item.tokenId}成功`)
+          })
+          .catch((err: any) => console.error(err))
+      }
+
+      return Promise.resolve()
     })
 
-    requestList()
-  }
+  await Promise.all(promises)
+  msg.close()
+  console.log('转移完成')
+  ElMessage({
+    type: 'success',
+    message: '转移完成',
+  })
 
-  // ElMessage({
-  //   type: 'info',
-  //   message: '已取消转移'
-  // })
-}
-
-/**
- * 批量退出工作具体执行
- */
-async function quitWorkHelper(tokenId: string) {
-  const tx = await contracts.MiningAddress.quitWork(tokenId)
-  await tx.wait()
-  ElMessage.success(`${tokenId} 已经退出工作`)
+  requestList()
 }
 
 /**
  * 递归执行批量退出工作
  */
-function batchQuitWork(index = 0) {
-  if (workingSelection.value[index]?.tokenId) {
-    const msg = ElMessage({
-      type: 'info',
-      duration: 0,
-      message: `${workingSelection.value[index]?.tokenId} 正在退出工作`,
+async function batchQuitWork() {
+  const msg = ElMessage({
+    type: 'info',
+    message: '批量退出工作中, 请勿发生交易操作',
+    duration: 0,
+  })
+
+  const nonceStore = useNonceStore()
+  await nonceStore.updateLatestNonce()
+
+  // 最大交易为64
+  const promises = workingSelection.value
+    .slice(0, TX_QUEUE_MAXIMUM)
+    .map(({ tokenId, isAdvanceJob }, index) => {
+      const itemMsg = ElMessage({
+        type: 'info',
+        duration: 0,
+        message: `${tokenId} 正在退出工作`,
+      })
+
+      const contract = isAdvanceJob
+        ? contracts.NewMiningAddress
+        : contracts.MiningAddress
+
+      return contract
+        .quitWork(tokenId, {
+          nonce: nonceStore.nonce + index,
+        })
+        .then((tx: any) => tx.wait())
+        .then(() => {
+          itemMsg.close()
+          ElMessage.success(`${tokenId}已退出工作`)
+        })
+        .catch((err: any) => console.error(err))
     })
-    quitWorkHelper(workingSelection.value[index].tokenId).then(() => {
-      msg.close()
-      index++
-      batchQuitWork(index)
-    })
-  } else {
-    ElMessage.success('成功退出工作')
-    requestList()
-  }
+
+  await Promise.all(promises)
+  msg.close()
+  ElMessage.success(`批量退出工作完成`)
+  console.log(`批量退出工作完成`)
+  requestList()
 }
 
 /**

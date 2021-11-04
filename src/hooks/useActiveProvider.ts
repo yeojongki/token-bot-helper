@@ -1,6 +1,5 @@
 import { ChainId } from '@pancakeswap/sdk'
 import { providers, Wallet } from 'ethers'
-import { effect } from 'vue'
 import { useUserStore } from '@/store/user'
 import { defaultRpc } from '@/constants'
 import { usePrivateKey } from './usePrivateKey'
@@ -25,7 +24,7 @@ let wallet: null | Wallet = null
 export function setProvider(url: string) {
   provider = url.startsWith('wss')
     ? new providers.WebSocketProvider(url)
-    : new providers.JsonRpcProvider(url)
+    : new providers.StaticJsonRpcProvider(url)
 
   return provider
 }

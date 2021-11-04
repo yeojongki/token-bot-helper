@@ -3,5 +3,6 @@
   "semi": false,
   "singleQuote": true,
   "useTabs": false,
-  "trailingComma": "all"
+  "trailingComma": "all",
+  "arrowParens": "avoid"
 }

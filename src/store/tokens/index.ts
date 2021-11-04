@@ -1,6 +1,11 @@
 import { WETHTokenAddress } from '@/constants'
 import ERC20_ABI from '@/constants/erc20'
-import { BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
+import {
+  BUSD_TOKEN,
+  mainnetTokensAddressMap,
+  USDT_TOKEN,
+  WBNB_TOKEN,
+} from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { getTokenPrice, withPoll } from '@/utils'
 import { Contract } from '@ethersproject/contracts'
@@ -44,12 +49,17 @@ export class TokenWithPrice extends Token {
 export const useTokensStore = defineStore({
   id: 'tokens',
   state: () => ({
-    ethPrice: 432,
+    ethPrice: 538,
     loading: false,
     /**
      * 是否在
      */
     pollingReturn: undefined,
+    /**
+     * 运行时的 token 列表
+     * 作为缓存
+     */
+    runtimeTokens: new Map<string, Token>(),
   }),
   actions: {
     /**
@@ -81,8 +91,14 @@ export const useTokensStore = defineStore({
     async getTokenDetail(address: string) {
       try {
         const { provider, chainId } = useActiveProvider()
+        const userStore = useUserStore()
+
+        // 取缓存中的
+        let runtimeToken = userStore.tokens[ChainId.MAINNET][address]
+        if (runtimeToken) return runtimeToken
 
         const tokenContract = new Contract(address, ERC20_ABI, provider)
+
         const [decimals, symbol, name] = await Promise.all([
           await tokenContract.decimals(),
           await tokenContract.symbol(),
@@ -90,7 +106,9 @@ export const useTokensStore = defineStore({
         ])
 
         return new Token(chainId, address, decimals, symbol, name)
-      } catch (error) {}
+      } catch (error) {
+        console.error('get token detail error', error)
+      }
     },
     /**
      * 更新观察的 token 列表价格
@@ -112,14 +130,14 @@ export const useTokensStore = defineStore({
                 // 跳过不需要关注的 token
                 if (provider && !skipWatch) {
                   getTokenPrice(address, WBNB_TOKEN.address, provider)
-                    .then((price) => {
+                    .then(price => {
                       userStore.updateAddedTokenPrice({
                         chainId,
                         address,
                         price,
                       })
                     })
-                    .catch((err) => {
+                    .catch(err => {
                       console.log(err)
                     })
                 }

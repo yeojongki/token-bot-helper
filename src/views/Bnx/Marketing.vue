@@ -42,45 +42,52 @@
     <el-card class="mt-20">
       <template #header>
         <div class="flex items-center">
-          <div class="mr-10">购买配置</div>
+          <div class="mr-10">自动购买配置</div>
           <el-switch
             class="ml-10"
             v-model="autoBuy.open"
-            :active-text="autoBuy.open ? '已开启自动购买' : '已关闭自动购买'"
+            :active-text="autoBuy.open ? '已开启' : '已关闭'"
           ></el-switch>
         </div>
       </template>
-      <div class="flex items-center">
-        <div class="flex items-center ml-10">
-          <div class="mr-10">自动购买最低价:</div>
-          <el-input-number
-            size="small"
-            v-model="autoBuy.minPrice"
-            :step-strictly="true"
-            :step="0.01"
-          ></el-input-number>
-        </div>
 
-        <div class="flex items-center ml-10">
-          <div class="mr-10">Gas Price:</div>
-          <el-input-number
-            size="small"
-            v-model="autoBuy.gasPrice"
-            :step-strictly="true"
-            :step="1"
-          ></el-input-number>
-        </div>
+      <el-row :gutter="20" align="center">
+        <el-col :xs="24" :sm="12" :md="8">
+          <div class="flex items-center ml-10 mb-10">
+            <div class="mr-10">零工最高价:</div>
+            <el-input-number
+              size="small"
+              v-model="autoBuy.partTimePrice"
+              :step-strictly="true"
+              :step="0.01"
+            ></el-input-number>
+          </div>
+        </el-col>
 
-        <div class="flex items-center ml-10">
-          <div class="mr-10">Gas Limit:</div>
-          <el-input-number
-            size="small"
-            v-model="autoBuy.gasLimit"
-            :step-strictly="true"
-            :step="10000"
-          ></el-input-number>
-        </div>
-      </div>
+        <el-col :xs="24" :sm="12" :md="8">
+          <div class="flex items-center ml-10 mb-10">
+            <div class="mr-10">Gas Price:</div>
+            <el-input-number
+              size="small"
+              v-model="autoBuy.gasPrice"
+              :step-strictly="true"
+              :step="1"
+            ></el-input-number>
+          </div>
+        </el-col>
+
+        <el-col :xs="24" :sm="12" :md="8">
+          <div class="flex items-center ml-10 mb-10">
+            <div class="mr-10">Gas Limit:</div>
+            <el-input-number
+              size="small"
+              v-model="autoBuy.gasLimit"
+              :step-strictly="true"
+              :step="10000"
+            ></el-input-number>
+          </div>
+        </el-col>
+      </el-row>
     </el-card>
 
     <el-card class="mt-20 mb-20" header="操作">
@@ -93,7 +100,7 @@
     </el-card>
 
     <el-card class="mt-20 mb-20" header="搜索参数">
-      <el-form :model="searchParams">
+      <el-form :model="searchParams" ref="searchForm">
         <el-form-item label="状态" prop="status">
           <el-select v-model="searchParams.status">
             <el-option value="" label="全部"></el-option>
@@ -140,9 +147,10 @@
         </el-form-item>
 
         <el-form-item>
-          <async-button :onSuccess="onGetListSuccess" :api="getList"
-            >查询</async-button
+          <el-button type="primary" @click="saveSearchParams2Storage"
+            >保存参数</el-button
           >
+          <el-button @click="resetSearchForm">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -176,6 +184,8 @@ import {
   ElFormItem,
   ElSelect,
   ElOption,
+  ElRow,
+  ElCol,
 } from 'element-plus'
 import { utils } from 'ethers'
 import { effect, onUnmounted, reactive, ref } from 'vue'
@@ -196,7 +206,6 @@ import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
-import AsyncButton from '@/components/AsyncButton/index.vue'
 import { bnxNamespace } from '@/constants/namespace'
 import { getFromStorage, setToStorage } from '@/utils/storage'
 
@@ -205,6 +214,11 @@ const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
 const newSaleAddress = '0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F'
 const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
+
+/**
+ * form 表单 ref
+ */
+const searchForm = ref()
 
 /**
  * 请求列表间隔
@@ -232,9 +246,9 @@ const autoBuy = reactive({
    */
   open: false,
   /**
-   * 购买最低价
+   * 购买零工最高价
    */
-  minPrice: 0.45,
+  partTimePrice: 0,
   gasLimit: 540000,
   gasPrice: 6,
 })
@@ -320,7 +334,7 @@ async function getList(page = 1) {
           // 自动购买
           if (
             autoBuy.open &&
-            item.price <= autoBuy.minPrice &&
+            item.price <= autoBuy.partTimePrice &&
             !currentBuying[item.order_id]
           ) {
             // 设置已经购买
@@ -442,9 +456,12 @@ async function getList(page = 1) {
 }
 
 /**
- * 请求列表成功后保存查询参数到 localStorage
+ * 保存查询参数到 localStorage
  */
-function onGetListSuccess() {
+function saveSearchParams2Storage() {
+  pollList.stop()
+  pollList.start()
+
   const { path } = router.currentRoute.value
   const query = qs.stringify(searchParams)
   router.replace(`${path}?${query}`)
@@ -453,10 +470,17 @@ function onGetListSuccess() {
 }
 
 /**
+ * 重置表单
+ */
+function resetSearchForm() {
+  searchForm.value.resetFields()
+}
+
+/**
  * 购买选中角色
  */
 async function buySelected() {
-  selection.value.map((item) => {
+  selection.value.map(item => {
     if (bnxStore.bnxBalance >= item.price) {
       buyPlayer(item.order_id, item.price)
     } else {

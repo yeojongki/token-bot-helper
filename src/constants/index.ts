@@ -18,3 +18,8 @@ export const BETTER_TRADE_LESS_HOPS_THRESHOLD = new Percent(
   JSBI.BigInt(50),
   JSBI.BigInt(10000),
 )
+
+/**
+ * 交易队列最大交易数
+ */
+export const TX_QUEUE_MAXIMUM = 64
