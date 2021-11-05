@@ -1,6 +1,6 @@
 <template>
   <div class="flex">
-    <el-input v-model="addTokenAddress" class="mr-10"></el-input>
+    <Input v-model="addTokenAddress" class="mr-10"></Input>
     <async-button
       :api="onAddToken"
       class="ml-15"
@@ -34,44 +34,42 @@
             </div>
           </div>
           <div>
-            <el-button
+            <Button
               size="small"
-              :type="element.skipWatch ? 'info' : 'danger'"
+              :danger="element.skipWatch ? true : false"
+              :type="element.skipWatch ? 'default' : undefined"
               @click="
                 userStore.toggleSkipWatchToken({
                   chainId: element.chainId,
                   address: element.address,
                 })
               "
-              >{{ element.skipWatch ? '暂停中' : '观察中' }}</el-button
+              >{{ element.skipWatch ? '暂停中' : '观察中' }}</Button
             >
-            <el-dropdown @command="handleCommond" size="small" class="ml-10">
-              <el-button size="small" type="primary">
-                更多
-                <i class="el-icon-arrow-down el-icon--right"></i>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item
+            <DropdownButton size="small" class="ml-10">
+              更多
+              <template #overlay>
+                <Menu @click="handleCommond">
+                  <MenuItem
                     :command="{
                       name: Commond.COPY_ADDRESS,
                       chainId: element.chainId,
                       address: element.address,
                     }"
-                    >复制地址</el-dropdown-item
+                    >复制地址</MenuItem
                   >
-                  <el-dropdown-item
+                  <MenuItem
                     divided
                     :command="{
                       name: Commond.DELETE,
                       chainId: element.chainId,
                       address: element.address,
                     }"
-                    >删除</el-dropdown-item
+                    >删除</MenuItem
                   >
-                </el-dropdown-menu>
+                </Menu>
               </template>
-            </el-dropdown>
+            </DropdownButton>
           </div>
         </div>
       </li>
@@ -81,13 +79,7 @@
 
 <script lang="ts" setup>
 import draggable from 'vuedraggable'
-import {
-  ElButton,
-  ElInput,
-  ElDropdown,
-  ElDropdownItem,
-  ElDropdownMenu,
-} from 'element-plus'
+import { Button, Input, DropdownButton, Menu, MenuItem } from 'ant-design-vue'
 import { WBNB_TOKEN } from '@/constants/tokens'
 import { useUserStore } from '@/store/user'
 import AsyncButton from '@/components/AsyncButton/index.vue'

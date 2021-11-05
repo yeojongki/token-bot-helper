@@ -1,31 +1,31 @@
 <template>
   <main class="home">
-    <el-row :gutter="20">
-      <el-col :xs="24" :md="12">
-        <el-card header="代币列表" class="mt-20">
+    <Row :gutter="20">
+      <Col :xs="24" :md="12">
+        <Card header="代币列表" class="mt-20">
           <watch-list></watch-list>
-        </el-card>
-      </el-col>
+        </Card>
+      </Col>
 
-      <el-col :xs="24" :md="12">
-        <el-card header="用户配置" class="mt-20">
+      <Col :xs="24" :md="12">
+        <Card header="用户配置" class="mt-20">
           <user-config></user-config>
-        </el-card>
-      </el-col>
+        </Card>
+      </Col>
 
-      <el-col :xs="24" :md="12" :lg="12">
-        <el-card header="交易区" class="mt-20">
+      <Col :xs="24" :md="12" :lg="12">
+        <Card header="交易区" class="mt-20">
           <bot></bot>
-        </el-card>
-      </el-col>
-    </el-row>
+        </Card>
+      </Col>
+    </Row>
   </main>
 </template>
 
 <script setup lang="ts">
-import { ElRow, ElCol, ElCard } from 'element-plus'
-import Bot from "./components/Bot.vue"
-import WatchList from "./components/WatchList.vue"
+import { Row, Col, Card } from 'ant-design-vue'
+import Bot from './components/Bot.vue'
+import WatchList from './components/WatchList.vue'
 import UserConfig from './components/UserConfig.vue'
 </script>
 

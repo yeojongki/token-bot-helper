@@ -1,34 +1,44 @@
 <template>
-  <el-form :model="config" ref="formRef" label-position="top">
-    <el-form-item label="私钥" prop="privateKey" :required="true">
-      <el-input v-model="config.privateKey" type="password" />
-    </el-form-item>
+  <Form :model="config" ref="formRef" label-position="top">
+    <FormItem label="私钥" name="privateKey" :required="true">
+      <Input v-model="config.privateKey" type="password" />
+    </FormItem>
 
-    <el-form-item label="节点" prop="rpc" :required="true">
+    <FormItem label="节点" name="rpc" :required="true">
       <div class="flex w-full items-center">
-        <el-select class="flex-1 mr-10" v-model="config.rpc">
-          <el-option v-for="item in userStore.rpcList" :key="item" :value="item">
-            {{
-              item
-            }}
-          </el-option>
-        </el-select>
-        <el-button @click="userStore.testRpcDelay(config.rpc)" type="primary">测试</el-button>
+        <Select class="flex-1 mr-10" v-model="config.rpc">
+          <SelectOption
+            v-for="item in userStore.rpcList"
+            :key="item"
+            :value="item"
+          >
+            {{ item }}
+          </SelectOption>
+        </Select>
+        <Button @click="userStore.testRpcDelay(config.rpc)" type="primary"
+          >测试</Button
+        >
       </div>
-    </el-form-item>
+    </FormItem>
 
     <div class="flex justify-center">
-      <el-button type="primary" @click="saveConfig">保存配置</el-button>
+      <Button type="primary" @click="saveConfig">保存配置</Button>
     </div>
-  </el-form>
+  </Form>
 </template>
 
 <script lang="ts" setup>
-import { ElRow, ElCol, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElButton, ElMessage } from 'element-plus'
-import { reactive, ref } from "vue";
-import { useUserStore } from "@/store/user";
-import AsyncButton from '@/components/AsyncButton/index.vue';
-import useStore from 'element-plus/lib/components/table/src/store';
+import {
+  Form,
+  FormItem,
+  Select,
+  SelectOption,
+  Button,
+  Input,
+  message,
+} from 'ant-design-vue'
+import { reactive, ref } from 'vue'
+import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 const config = reactive({
@@ -42,7 +52,7 @@ const saveConfig = () => {
     if (valid) {
       userStore.setPrivateKey(config.privateKey)
       userStore.setCurrentRpc(config.rpc)
-      ElMessage.success("保存成功")
+      message.success('保存成功')
     }
   })
 }

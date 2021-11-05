@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import { ElConfigProvider } from 'element-plus'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import { ConfigProvider } from 'ant-design-vue'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { useNonceStore } from './store/nonce'
 import { useTokensStore } from './store/tokens'
 // This starter template is using Vue 3 <script setup> SFCs
@@ -17,9 +17,9 @@ nonceStore.updateLatestNonce()
 </script>
 
 <template>
-  <ElConfigProvider :locale="zhCn">
+  <ConfigProvider :locale="zhCN">
     <RouterView></RouterView>
-  </ElConfigProvider>
+  </ConfigProvider>
 </template>
 
 <style>
