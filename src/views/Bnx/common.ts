@@ -5,15 +5,34 @@ import roleABI from './abi/role'
 import playInfoABI from './abi/playInfo'
 import workTypeABI from './abi/workType'
 import bookMangeABI from './abi/bookManage'
+import SaleNewABI from './abi/saleNew'
 import { toFixed } from '@/utils'
 
 export interface Hero {
   tokenId: string
+  /**
+   * 力量
+   */
   strength: number
+  /**
+   * 敏捷
+   */
   agility: number
+  /**
+   * 体力
+   */
   constitution: number
+  /**
+   * 意志
+   */
   willpower: number
+  /**
+   * 智力
+   */
   intelligence: number
+  /**
+   * 精神
+   */
   spirit: number
   level: number
   /**
@@ -177,6 +196,10 @@ export const contractAddress = {
   gameManager: '0xfBB36Af639251427D390c0294e8745631333234f',
   FeeAddress: '0xaf6B62B020C88C52B5060B4Dbc938d2D872eA8F1',
   AirdropAddress: '0xEc39831c3b13dFfcffDE0aFcedd138F4bd0384f8',
+  /**
+   * 售卖合约
+   */
+  NewSaleAddress: '0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F',
 }
 
 /**
@@ -200,6 +223,14 @@ export const roleList = [
     value: contractAddress.RangerAddress,
   },
 ]
+
+/**
+ * 获取销售合约
+ * @param wallet
+ * @returns
+ */
+export const getSaleContract = (wallet: Wallet) =>
+  new Contract(contractAddress.NewSaleAddress, SaleNewABI, wallet)
 
 export const getContracts = (wallet: Wallet) => ({
   PlayInfoAddress: new Contract(

@@ -24,13 +24,13 @@ const [loading, setLoading] = useRef(false)
 
 const handleClick = async () => {
   try {
-    setLoading()
+    setLoading(true)
     await props.api()
     props.onSuccess?.()
   } catch (error) {
     console.error(error)
   } finally {
-    setLoading()
+    setLoading(false)
   }
 }
 </script>

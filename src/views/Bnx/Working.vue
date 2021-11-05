@@ -25,7 +25,10 @@
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
-        <el-input-number v-model="batcGetAwardsMin" class="ml-10 mr-10"></el-input-number>
+        <el-input-number
+          v-model="batcGetAwardsMin"
+          class="ml-10 mr-10"
+        ></el-input-number>
       </div>
 
       <!-- :disabled="!workingSelection.length" -->
@@ -35,13 +38,15 @@
           type="primary"
           :disabled="!workingSelection.length"
           :api="batchGetAwards"
-        >批量获取受益</async-button>
+          >批量获取受益</async-button
+        >
         <async-button
           class="ml-10"
           type="primary"
           :disabled="!workingSelection.length"
           :api="batchQuitWork"
-        >批量退出工作</async-button>
+          >批量退出工作</async-button
+        >
       </div>
     </div>
 
@@ -66,12 +71,32 @@
 
   <el-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
     <div class="flex mb-10">
-      <el-input v-model="transferTo" placeholder="请输入将要转移到的钱包地址" class="mr-10"></el-input>
+      <el-input
+        v-model="transferTo"
+        placeholder="请输入将要转移到的钱包地址"
+        class="mr-10"
+      ></el-input>
       <async-button
         :disabled="transferTo.length !== 42 || !noWorkingSelection.length"
         type="primary"
         :api="transferRole"
-      >转移选中角色</async-button>
+        >转移选中角色</async-button
+      >
+    </div>
+
+    <div class="flex items-center mb-10">
+      <!-- <div>批量拍卖价格：</div> -->
+      <el-input-number
+        :min="0"
+        v-model="batchAuctionPrice"
+        class="mr-10 flex-1"
+      ></el-input-number>
+      <async-button
+        :disabled="batchAuctionPrice <= 0 || !noWorkingSelection.length"
+        type="primary"
+        :api="batchAuction"
+        >批量发布拍卖</async-button
+      >
     </div>
 
     <div class="mb-20 flex items-center justify-end">
@@ -81,7 +106,8 @@
         type="primary"
         :disabled="!noWorkingSelection.length"
         :api="batchGoWork"
-      >批量打工</async-button>
+        >批量打工</async-button
+      >
     </div>
 
     <el-table
@@ -90,7 +116,7 @@
       :data="noWorkingList"
       :border="true"
     >
-      <props-column></props-column>
+      <props-column :is-no-working="true"></props-column>
     </el-table>
   </el-card>
 
@@ -102,8 +128,18 @@
         placeholder="请输入批量抽卡数量"
         class="mr-10"
       ></el-input-number>-->
-      <async-button :disabled="bnxStore.bnxBalance < 1" type="primary" :api="getNewPlayerOne">抽卡1次</async-button>
-      <async-button :disabled="bnxStore.bnxBalance < 5" type="primary" :api="batchNewPlayer">批量抽卡5次</async-button>
+      <async-button
+        :disabled="bnxStore.bnxBalance < 1"
+        type="primary"
+        :api="getNewPlayerOne"
+        >抽卡1次</async-button
+      >
+      <async-button
+        :disabled="bnxStore.bnxBalance < 5"
+        type="primary"
+        :api="batchNewPlayer"
+        >批量抽卡5次</async-button
+      >
     </div>
   </el-card>
 </template>
@@ -131,6 +167,7 @@ import {
   checkIsAdvancePlayer,
   getGoldDaily,
   getHeroMainProp,
+  getSaleContract,
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { useBnxStore } from '@/store/bnx'
@@ -152,6 +189,11 @@ bnxStore.updateBnxAndGold()
  * 角色转移到的目标地址
  */
 const transferTo = ref('0x055Ea612D6a422Bb6CA20722b570B9E33227858E')
+
+/**
+ * 批量拍卖价格
+ */
+const batchAuctionPrice = ref(0.42)
 
 /**
  * 当前收益 / 每日收益 $
@@ -410,7 +452,6 @@ function batchGetAwards() {
 
     const nonceStore = useNonceStore()
     nonceStore.updateLatestNonce().then(() => {
-
       // 最大交易为64
       const promises = workingSelection.value
         // 过滤最低收益
@@ -438,18 +479,20 @@ function batchGetAwards() {
             .catch((err: any) => console.error(err))
         })
 
-      Promise.all(promises).then(() => {
-        msg.close()
-        console.log('批量领取完成')
-        ElMessage.success(`批量领取完成`)
-        // 刷新打工列表
-        getWorkingPlayers()
-        resolve()
-      }).catch(err => {
-        console.error(err)
-        ElMessage.error(`批量领取失败`)
-        reject()
-      })
+      Promise.all(promises)
+        .then(() => {
+          msg.close()
+          console.log('批量领取完成')
+          ElMessage.success(`批量领取完成`)
+          // 刷新打工列表
+          getWorkingPlayers()
+          resolve()
+        })
+        .catch(err => {
+          console.error(err)
+          ElMessage.error(`批量领取失败`)
+          reject()
+        })
     })
   })
 }
@@ -538,15 +581,17 @@ function batchGoWork() {
 
     const nonceStore = useNonceStore()
     nonceStore.updateLatestNonce().then(() => {
-
-
       // 最大交易为64
       const promises = noWorkingSelection.value
         .slice(0, TX_QUEUE_MAXIMUM)
         .map(({ tokenId }, index) =>
-          contracts.MiningAddress.work(contractAddress.LinggongAddress, tokenId, {
-            nonce: nonceStore.nonce + index,
-          })
+          contracts.MiningAddress.work(
+            contractAddress.LinggongAddress,
+            tokenId,
+            {
+              nonce: nonceStore.nonce + index,
+            },
+          )
             .then((tx: any) => tx.wait())
             .then(() => {
               ElMessage.success(`${tokenId}已打工`)
@@ -554,20 +599,93 @@ function batchGoWork() {
             .catch((err: any) => console.error(err)),
         )
 
-      Promise.all(promises).then(() => {
-        msg.close()
-        ElMessage.success(`批量打工完成`)
-        console.log(`批量打工完成`)
-        requestList()
-        resolve()
-      }).catch(err => {
-        console.error(err)
-        ElMessage.error(`批量打工失败`)
-        reject()
-      })
+      Promise.all(promises)
+        .then(() => {
+          msg.close()
+          ElMessage.success(`批量打工完成`)
+          console.log(`批量打工完成`)
+          requestList()
+          resolve()
+        })
+        .catch(err => {
+          console.error(err)
+          ElMessage.error(`批量打工失败`)
+          reject()
+        })
     })
   })
+}
 
+/**
+ * 批量拍卖
+ */
+function batchAuction() {
+  return new Promise<void>((resolve, reject) => {
+    const saleContractNew = getSaleContract(wallet)
+
+    const msg = ElMessage({
+      type: 'info',
+      message: '批量拍卖中, 请勿发生交易操作',
+      duration: 0,
+    })
+
+    const nonceStore = useNonceStore()
+    nonceStore.updateLatestNonce().then(() => {
+      // 最大交易为64
+      const promises = noWorkingSelection.value.slice(0, TX_QUEUE_MAXIMUM).map(
+        (
+          {
+            tokenId,
+            roleAddress,
+            strength,
+            agility,
+            constitution,
+            willpower,
+            intelligence,
+            spirit,
+          },
+          index,
+        ) =>
+          // new Promise<void>((resolve, reject) => {
+          saleContractNew
+            .sellPlayer(
+              wallet.address,
+              roleAddress,
+              bnxStore.bnxAddress,
+              tokenId,
+              utils.parseUnits(`${batchAuctionPrice.value}`, 'ether'),
+              `力${strength}/敏${agility}/体${constitution}/意${willpower}/智${intelligence}/精${spirit}`,
+              {
+                nonce: nonceStore.nonce + index,
+              },
+            )
+            .then((tx: any) => tx.wait())
+            .then(() => {
+              // resolve()
+              ElMessage.success(`${tokenId}已拍卖`)
+            })
+            .catch((err: any) => {
+              // reject(err)
+              console.error(err)
+            }),
+        // }),
+      )
+
+      Promise.all(promises)
+        .then(() => {
+          msg.close()
+          ElMessage.success(`批量拍卖完成`)
+          console.log(`批量拍卖完成`)
+          getPlayersNoWorking()
+          resolve()
+        })
+        .catch(err => {
+          console.error(err)
+          ElMessage.error(`批量拍卖失败`)
+          reject()
+        })
+    })
+  })
 }
 
 /**
@@ -669,22 +787,21 @@ function batchQuitWork() {
             .catch((err: any) => console.error(err))
         })
 
-      Promise.all(promises).then(() => {
-        msg.close()
-        ElMessage.success(`批量退出工作完成`)
-        console.log(`批量退出工作完成`)
-        requestList()
-        resolve()
-      }).catch((err) => {
-        console.error(err)
-        reject(err)
-        ElMessage.error(`批量退出工作发生错误`)
-      })
-
+      Promise.all(promises)
+        .then(() => {
+          msg.close()
+          ElMessage.success(`批量退出工作完成`)
+          console.log(`批量退出工作完成`)
+          requestList()
+          resolve()
+        })
+        .catch(err => {
+          console.error(err)
+          reject(err)
+          ElMessage.error(`批量退出工作发生错误`)
+        })
     })
   })
-
-
 }
 
 /**
@@ -743,5 +860,5 @@ requestList()
 </script>
 
 <style lang="scss" scoped>
-@import "./style.scss";
+@import './style.scss';
 </style>

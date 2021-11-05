@@ -143,7 +143,11 @@
         </el-form-item>
 
         <el-form-item label="分页数量" prop="page_size">
-          <el-input-number v-model="searchParams.page_size"></el-input-number>
+          <el-input-number
+            v-model="searchParams.page_size"
+            :step="1"
+            :step-strictly="true"
+          ></el-input-number>
         </el-form-item>
 
         <el-form-item>
@@ -198,11 +202,11 @@ import {
   getPaybackCycle,
   roleType,
   roleList,
+  getSaleContract,
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { promisePoll } from '@/utils'
 import { get } from '@/utils/request'
-import SaleNewABI from './abi/saleNew'
 import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
@@ -212,8 +216,7 @@ import { getFromStorage, setToStorage } from '@/utils/storage'
 const router = useRouter()
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
-const newSaleAddress = '0x1416e6EA40CBb1F09Cd2dbEdAAd6fbFE3e38D51F'
-const saleContractNew = new Contract(newSaleAddress, SaleNewABI, wallet)
+const saleContractNew = getSaleContract(wallet)
 
 /**
  * form 表单 ref

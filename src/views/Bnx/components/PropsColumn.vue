@@ -30,13 +30,20 @@
 
   <el-table-column prop="level" sortable label="等级" width="80">
     <template #default="{ row }">
-      <div>lv. {{ row.level }}</div>
-      <div v-show="row.level > 1" class="upgrade-cost">
-        升级成本:
-        {{
-          getUpgradeCostBnx(1, row.level, bnxStore.goldPrice, bnxStore.bnxPrice)
-        }}
-        BNX
+      <div @click="copyRow(row)">
+        <div>lv. {{ row.level }}</div>
+        <div v-show="row.level > 1" class="upgrade-cost">
+          升级成本:
+          {{
+            getUpgradeCostBnx(
+              1,
+              row.level,
+              bnxStore.goldPrice,
+              bnxStore.bnxPrice,
+            )
+          }}
+          BNX
+        </div>
       </div>
     </template>
   </el-table-column>
@@ -94,7 +101,7 @@
     label="回本"
   >
     <template #default="{ row }">
-      <div class="price-row" @click="copyRow(row)">
+      <div class="price-row">
         <!-- {{ row.paybackCycle }} 天 -->
         <div v-if="!row.isAdvance">零工:{{ row.paybackCycle }}天</div>
         <div v-else>
@@ -205,6 +212,7 @@ import type { Hero } from '../common'
 import { useBnxStore } from '@/store/bnx'
 
 defineProps({
+  isNoWorking: Boolean,
   isWorking: Boolean,
   isMarketing: Boolean,
 })
