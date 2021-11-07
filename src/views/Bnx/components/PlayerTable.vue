@@ -1,6 +1,7 @@
 <template>
   <a-table
     row-key="tokenId"
+    :loading="loading"
     :bordered="true"
     :pagination="false"
     :height="props.height"
@@ -262,6 +263,7 @@ const props = defineProps({
   onSelectionChange: {
     type: Function as PropType<(selectedRows: any[]) => void>,
   },
+  hideLoading: Boolean,
   height: Number,
   isNoWorking: Boolean,
   isWorking: Boolean,
@@ -269,6 +271,7 @@ const props = defineProps({
 })
 
 const dataSource = ref([])
+const loading = ref(false)
 
 const bnxStore = useBnxStore()
 const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
@@ -278,8 +281,20 @@ const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
  * 请求列表数据
  */
 const getList = async () => {
-  const list = await props.api()
-  dataSource.value = list
+  try {
+    if (!props.hideLoading) {
+      loading.value = true
+    }
+
+    const list = await props.api()
+    dataSource.value = list
+  } catch (error) {
+    console.error(error)
+  } finally {
+    if (loading.value) {
+      loading.value = false
+    }
+  }
 }
 
 /**

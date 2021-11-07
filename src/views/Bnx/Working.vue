@@ -38,13 +38,15 @@
           type="primary"
           :disabled="!workingSelection.length"
           :api="batchGetAwards"
-        >批量获取受益</async-button>
+          >批量获取受益</async-button
+        >
         <async-button
           class="ml-10"
           type="primary"
           :disabled="!workingSelection.length"
           :api="batchQuitWork"
-        >批量退出工作</async-button>
+          >批量退出工作</async-button
+        >
       </div>
     </div>
 
@@ -78,7 +80,8 @@
         :disabled="transferTo.length !== 42 || !noWorkingSelection.length"
         type="primary"
         :api="transferRole"
-      >转移选中角色</async-button>
+        >转移选中角色</async-button
+      >
     </div>
 
     <div class="flex items-center mb-10">
@@ -92,7 +95,8 @@
         :disabled="batchAuctionPrice <= 0 || !noWorkingSelection.length"
         type="primary"
         :api="batchAuction"
-      >批量发布拍卖</async-button>
+        >批量发布拍卖</async-button
+      >
     </div>
 
     <div class="mb-20 flex items-center justify-end">
@@ -100,10 +104,12 @@
         type="primary"
         :disabled="!noWorkingSelection.length"
         :api="batchGoWork"
-      >批量打工</async-button>
+        >批量打工</async-button
+      >
     </div>
 
     <player-table
+      ref="noWorkingTableRef"
       :api="getPlayersNoWorking"
       :is-no-working="true"
       :on-selectionChange="noWorkingSelectionChange"
@@ -151,7 +157,7 @@ import {
   getHeroMainProp,
   getSaleContract,
 } from './common'
-import type { Hero, WorkingHero } from './common'
+import type { Hero, WorkingHero, ActionType } from './common'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 import { toFixed } from '@/utils'
@@ -162,6 +168,8 @@ import PlayerTable from './components/PlayerTable.vue'
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
+const noWorkingTableRef = ref(undefined as ActionType | undefined)
+const workingTableRef = ref(undefined as ActionType | undefined)
 
 // 更新 bnx & 金币价格
 const bnxStore = useBnxStore()
@@ -411,10 +419,11 @@ async function getWorkingPlayers() {
  */
 function batchGetAwards() {
   return new Promise<void>((resolve, reject) => {
-    const msg = message({
-      type: 'info',
-      message: '批量获取角色奖励中, 请勿发生交易操作',
+    const messageKey = 'batchGetAwards'
+    message.loading({
+      content: '批量获取角色奖励中, 请勿发生交易操作',
       duration: 0,
+      key: messageKey,
     })
 
     const nonceStore = useNonceStore()
@@ -424,40 +433,42 @@ function batchGetAwards() {
         // 过滤最低收益
         .filter(item => item.incomeUsd > batcGetAwardsMin.value)
         .slice(0, TX_QUEUE_MAXIMUM)
-        .map(({ tokenId, isAdvanceJob }, index) => {
-          // const itemMsg = message({
-          //   type: 'info',
-          //   duration: 0,
-          //   message: `开始领取 ${tokenId}`,
-          // })
-
-          const contract = isAdvanceJob
-            ? contracts.NewMiningAddress
-            : contracts.MiningAddress
-          contract
-            .getAward(tokenId, {
-              nonce: nonceStore.nonce + index,
-            })
-            .then((tx: any) => tx.wait())
-            .then(() => {
-              // itemMsg.close()
-              // message.success(`${tokenId}已领取`)
-            })
-            .catch((err: any) => console.error(err))
-        })
+        .map(
+          ({ tokenId, isAdvanceJob }, index) =>
+            new Promise((resolve, reject) => {
+              const contract = isAdvanceJob
+                ? contracts.NewMiningAddress
+                : contracts.MiningAddress
+              contract
+                .getAward(tokenId, {
+                  nonce: nonceStore.nonce + index,
+                })
+                .then((tx: any) => tx.wait())
+                .then(resolve)
+                .catch((err: any) => {
+                  reject(err)
+                  console.error(err)
+                })
+            }),
+        )
 
       Promise.all(promises)
         .then(() => {
-          msg.close()
           console.log('批量领取完成')
-          message.success(`批量领取完成`)
+          message.success({
+            content: `批量领取完成`,
+            key: messageKey,
+          })
           // 刷新打工列表
-          getWorkingPlayers()
+          workingTableRef.value?.refresh()
           resolve()
         })
         .catch(err => {
           console.error(err)
-          message.error(`批量领取失败`)
+          message.error({
+            content: `批量领取失败`,
+            key: messageKey,
+          })
           reject()
         })
     })
@@ -503,43 +514,45 @@ async function getPlayersNoWorking() {
  */
 function batchGoWork() {
   return new Promise<void>((resolve, reject) => {
-    const msg = message({
-      type: 'info',
-      message: '批量打工中, 请勿发生交易操作',
-      duration: 0,
+    const messageKey = 'batchGoWork'
+    message.loading({
+      content: '批量打工中, 请勿发生交易操作',
+      duraton: 0,
+      key: messageKey,
     })
 
     const nonceStore = useNonceStore()
     nonceStore.updateLatestNonce().then(() => {
       // 最大交易为64
-      const promises = noWorkingSelection.value
-        .slice(0, TX_QUEUE_MAXIMUM)
-        .map(({ tokenId }, index) =>
-          contracts.MiningAddress.work(
-            contractAddress.LinggongAddress,
-            tokenId,
-            {
-              nonce: nonceStore.nonce + index,
-            },
-          )
-            .then((tx: any) => tx.wait())
-            .then(() => {
-              message.success(`${tokenId}已打工`)
-            })
-            .catch((err: any) => console.error(err)),
-        )
+      const promises = noWorkingSelection.value.slice(0, TX_QUEUE_MAXIMUM).map(
+        ({ tokenId }, index) =>
+          new Promise((resolve, reject) => {
+            contracts.MiningAddress.work(
+              contractAddress.LinggongAddress,
+              tokenId,
+              {
+                nonce: nonceStore.nonce + index,
+              },
+            )
+              .then((tx: any) => tx.wait())
+              .then(resolve)
+              .catch((err: any) => {
+                console.error(err)
+                reject(err)
+              })
+          }),
+      )
 
       Promise.all(promises)
         .then(() => {
-          msg.close()
-          message.success(`批量打工完成`)
+          message.success({ content: `批量打工完成`, key: messageKey })
           console.log(`批量打工完成`)
           requestList()
           resolve()
         })
         .catch(err => {
           console.error(err)
-          message.error(`批量打工失败`)
+          message.error({ content: `批量打工失败`, key: messageKey })
           reject()
         })
     })
@@ -553,10 +566,11 @@ function batchAuction() {
   return new Promise<void>((resolve, reject) => {
     const saleContractNew = getSaleContract(wallet)
 
-    const msg = message({
-      type: 'info',
-      message: '批量拍卖中, 请勿发生交易操作',
+    const messageKey = 'batchAuction'
+    message.loading({
+      content: '批量拍卖中, 请勿发生交易操作',
       duration: 0,
+      key: messageKey,
     })
 
     const nonceStore = useNonceStore()
@@ -576,42 +590,45 @@ function batchAuction() {
           },
           index,
         ) =>
-          // new Promise<void>((resolve, reject) => {
-          saleContractNew
-            .sellPlayer(
-              wallet.address,
-              roleAddress,
-              bnxStore.bnxAddress,
-              tokenId,
-              utils.parseUnits(`${batchAuctionPrice.value}`, 'ether'),
-              `力${strength}/敏${agility}/体${constitution}/意${willpower}/智${intelligence}/精${spirit}`,
-              {
-                nonce: nonceStore.nonce + index,
-              },
-            )
-            .then((tx: any) => tx.wait())
-            .then(() => {
-              // resolve()
-              message.success(`${tokenId}已拍卖`)
-            })
-            .catch((err: any) => {
-              // reject(err)
-              console.error(err)
-            }),
-        // }),
+          new Promise<void>((resolve, reject) => {
+            saleContractNew
+              .sellPlayer(
+                wallet.address,
+                roleAddress,
+                bnxStore.bnxAddress,
+                tokenId,
+                utils.parseUnits(`${batchAuctionPrice.value}`, 'ether'),
+                `力${strength}/敏${agility}/体${constitution}/意${willpower}/智${intelligence}/精${spirit}`,
+                {
+                  nonce: nonceStore.nonce + index,
+                },
+              )
+              .then((tx: any) => tx.wait())
+              .then(resolve)
+              .catch((err: any) => {
+                reject(err)
+                console.error(err)
+              })
+          }),
       )
 
       Promise.all(promises)
         .then(() => {
-          msg.close()
-          message.success(`批量拍卖完成`)
+          message.success({
+            content: `批量拍卖完成`,
+            key: messageKey,
+          })
           console.log(`批量拍卖完成`)
-          getPlayersNoWorking()
+          // 刷新列表
+          noWorkingTableRef.value?.refresh()
           resolve()
         })
         .catch(err => {
           console.error(err)
-          message.error(`批量拍卖失败`)
+          message.error({
+            content: `批量拍卖失败`,
+            key: messageKey,
+          })
           reject()
         })
     })
@@ -622,14 +639,13 @@ function batchAuction() {
  * 批量转移选中角色执行
  */
 async function transferRole() {
-  // await messageBox.confirm(`确认转移 ${noWorkingList.value.length} 个角色到 ${transferTo.value} ?`)
   // TODO 授权
   // const approvedTx = await contracts.WarriorAddress.setApprovalForAll(contractAddress.NewMiningAddress, true)
   // await approvedTx.wait()
-
-  const msg = message({
-    type: 'info',
-    message: '批量转移中, 请勿发生交易操作',
+  const messageKey = 'transferRole'
+  message.loading({
+    key: messageKey,
+    content: '批量转移中, 请勿发生交易操作',
     duration: 0,
   })
 
@@ -640,39 +656,41 @@ async function transferRole() {
   const promises = noWorkingSelection.value
     .slice(0, TX_QUEUE_MAXIMUM)
     .map((item, index) => {
-      let contract: Contract | null = null
+      return new Promise<void>((resolve, reject) => {
+        let contract: Contract | null = null
 
-      if (item.roleAddress === contractAddress.WarriorAddress) {
-        contract = contracts.WarriorAddress
-      } else if (item.roleAddress === contractAddress.MageAddress) {
-        contract = contracts.MageAddress
-      } else if (item.roleAddress === contractAddress.RangerAddress) {
-        contract = contracts.RangerAddress
-      } else if (item.roleAddress === contractAddress.RobberAddress) {
-        contract = contracts.RobberAddress
-      }
+        if (item.roleAddress === contractAddress.WarriorAddress) {
+          contract = contracts.WarriorAddress
+        } else if (item.roleAddress === contractAddress.MageAddress) {
+          contract = contracts.MageAddress
+        } else if (item.roleAddress === contractAddress.RangerAddress) {
+          contract = contracts.RangerAddress
+        } else if (item.roleAddress === contractAddress.RobberAddress) {
+          contract = contracts.RobberAddress
+        }
 
-      if (contract) {
-        return contract
-          .transferFrom(wallet.address, transferTo.value, item.tokenId, {
-            nonce: nonceStore.nonce + index,
-          })
-          .then((tx: any) => tx.wait())
-          .then(() => {
-            message.success(`转移${item.tokenId}成功`)
-          })
-          .catch((err: any) => console.error(err))
-      }
-
-      return Promise.resolve()
+        if (contract) {
+          return contract
+            .transferFrom(wallet.address, transferTo.value, item.tokenId, {
+              nonce: nonceStore.nonce + index,
+            })
+            .then((tx: any) => tx.wait())
+            .then(resolve)
+            .catch((err: any) => {
+              console.error(err)
+              reject(err)
+            })
+        } else {
+          resolve()
+        }
+      })
     })
 
   await Promise.all(promises)
-  msg.close()
   console.log('转移完成')
-  message({
-    type: 'success',
-    message: '转移完成',
+  message.success({
+    key: messageKey,
+    content: '转移完成',
   })
 
   requestList()
@@ -683,10 +701,11 @@ async function transferRole() {
  */
 function batchQuitWork() {
   return new Promise<void>((resolve, reject) => {
-    const msg = message({
-      type: 'info',
-      message: '批量退出工作中, 请勿发生交易操作',
+    const messageKey = 'batchQuitWork'
+    message.loading({
+      content: '批量退出工作中, 请勿发生交易操作',
       duration: 0,
+      key: messageKey,
     })
 
     const nonceStore = useNonceStore()
@@ -700,27 +719,30 @@ function batchQuitWork() {
           //   duration: 0,
           //   message: `${tokenId} 正在退出工作`,
           // })
+          return new Promise((resolve, reject) => {
+            const contract = isAdvanceJob
+              ? contracts.NewMiningAddress
+              : contracts.MiningAddress
 
-          const contract = isAdvanceJob
-            ? contracts.NewMiningAddress
-            : contracts.MiningAddress
-
-          return contract
-            .quitWork(tokenId, {
-              nonce: nonceStore.nonce + index,
-            })
-            .then((tx: any) => tx.wait())
-            .then(() => {
-              // itemMsg.close()
-              message.success(`${tokenId}已退出工作`)
-            })
-            .catch((err: any) => console.error(err))
+            return contract
+              .quitWork(tokenId, {
+                nonce: nonceStore.nonce + index,
+              })
+              .then((tx: any) => tx.wait())
+              .then(resolve)
+              .catch((err: any) => {
+                reject(err)
+                console.error(err)
+              })
+          })
         })
 
       Promise.all(promises)
         .then(() => {
-          msg.close()
-          message.success(`批量退出工作完成`)
+          message.success({
+            key: messageKey,
+            content: `批量退出工作完成`,
+          })
           console.log(`批量退出工作完成`)
           requestList()
           resolve()
@@ -728,7 +750,10 @@ function batchQuitWork() {
         .catch(err => {
           console.error(err)
           reject(err)
-          message.error(`批量退出工作发生错误`)
+          message.error({
+            key: messageKey,
+            content: `批量退出工作发生错误`,
+          })
         })
     })
   })
@@ -738,20 +763,23 @@ function batchQuitWork() {
  * 批量抽卡
  */
 async function batchNewPlayer() {
+  const messageKey = 'batchNewPlayer'
   try {
     const tx = await contracts.NewPlayInfoAddress.batchNewPlayer(
       batchNewPlayerCount.value,
       utils.parseUnits(`${batchNewPlayerCount.value}`, 'ether'),
     )
     await tx.wait()
-    message.success('批量抽卡成功')
+    message.success({
+      key: messageKey,
+      content: '批量抽卡成功',
+    })
 
     requestList()
   } catch (error) {
-    message({
-      type: 'error',
-      message: '批量抽卡失败',
-      duration: 0,
+    message.error({
+      content: '批量抽卡失败',
+      key: messageKey,
     })
     console.error(error)
   }
@@ -771,20 +799,15 @@ async function getNewPlayerOne() {
 
     requestList()
   } catch (error) {
-    message({
-      type: 'error',
-      message: '抽卡1次失败',
-      duration: 0,
-    })
+    message.destroy()
+    message.error('抽卡1次失败')
     console.error(error)
   }
 }
 
 // 获取打工/未打工列表
 const requestList = () => {
-  getPlayersNoWorking()
-  getWorkingPlayers()
+  noWorkingTableRef.value?.refresh()
+  workingTableRef.value?.refresh()
 }
-
-requestList()
 </script>

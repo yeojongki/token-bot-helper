@@ -156,6 +156,7 @@
 
     <!-- 市场列表表格 -->
     <player-table
+      :hide-loading="true"
       ref="actionRef"
       :api="getList"
       :is-marketing="true"
@@ -424,9 +425,7 @@ async function getList(page = 1) {
       return marketList.value
     }
   } catch (err) {
-    message.error!({
-      message: '请求失败',
-    })
+    message.error('请求失败')
   }
 }
 
@@ -475,7 +474,6 @@ async function buyPlayer(orderId: string, price: number) {
     duration: 0,
     message: msg,
   })
-  console.log(message)
   try {
     const tx = await saleContractNew.buyPlayer(orderId, {
       gasLimit: autoBuy.gasLimit,
@@ -532,18 +530,13 @@ let pollList = promisePoll(
   getListInterval.value,
 )
 
-effect(() => {
-  if (watchOpened.value) {
-    pollList.start()
-  } else {
-    pollList.stop()
-  }
-})
-
-if (watchOpened.value) {
-  // 执行
-  pollList.start()
-}
+// effect(() => {
+//   if (watchOpened.value) {
+//     pollList.start()
+//   } else {
+//     pollList.stop()
+//   }
+// })
 
 // 卸载移除轮训定时器
 onUnmounted(() => {
