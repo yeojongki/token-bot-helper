@@ -162,6 +162,10 @@ export const contractAddress = {
    */
   RangerAddress: '0xF31913a9C8EFE7cE7F08A1c08757C166b572a937',
   /**
+   * Katrina
+   */
+  KatrinaAddress: '0x819E04ddE93600b224F65e3C9B51b1B4D9fBa3b5',
+  /**
    * 普通零工工作
    */
   LinggongAddress: '0xfA65a5751ef6079C1022Aa10b9163d7A2281360A',
@@ -222,6 +226,10 @@ export const roleList = [
     name: '游侠',
     value: contractAddress.RangerAddress,
   },
+  {
+    name: '卡特莉娜',
+    value: contractAddress.KatrinaAddress,
+  },
 ]
 
 /**
@@ -253,6 +261,7 @@ export const getContracts = (wallet: Wallet) => ({
   RobberAddress: new Contract(contractAddress.RobberAddress, roleABI, wallet),
   MageAddress: new Contract(contractAddress.MageAddress, roleABI, wallet),
   RangerAddress: new Contract(contractAddress.RangerAddress, roleABI, wallet),
+  KatrinaAddress: new Contract(contractAddress.KatrinaAddress, roleABI, wallet),
   LinggongAddress: new Contract(
     contractAddress.LinggongAddress,
     workTypeABI,
@@ -297,6 +306,7 @@ export const roleType = {
   [contractAddress.RobberAddress]: '盗贼',
   [contractAddress.MageAddress]: '法师',
   [contractAddress.RangerAddress]: '游侠',
+  [contractAddress.KatrinaAddress]: '卡特',
 }
 
 /**
@@ -326,6 +336,7 @@ export function checkIsAdvancePlayer(playInfo: any[]): boolean {
   // 判断角色
   switch (playInfo[1]) {
     case contractAddress.WarriorAddress:
+    case contractAddress.KatrinaAddress:
       return strength > MAIN_PROP_MIN && constitution > SECOND_PROP_MIN
 
     case contractAddress.RobberAddress:
@@ -465,7 +476,8 @@ export function getHeroMainProp(hero: {
 
   if (
     hero.roleAddress === contractAddress.WarriorAddress ||
-    hero.roleAddress === contractAddress.RangerAddress
+    hero.roleAddress === contractAddress.RangerAddress ||
+    hero.roleAddress === contractAddress.KatrinaAddress
   ) {
     mainProp = hero.strength
   } else if (hero.roleAddress === contractAddress.RobberAddress) {

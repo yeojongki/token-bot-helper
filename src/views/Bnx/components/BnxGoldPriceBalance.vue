@@ -1,5 +1,5 @@
 <template>
-  <div class="flex">
+  <div class="flex items-center">
     <div class="mr-10">
       <div class="text-sm">
         余额: BNX {{ bnxStore.bnxBalance }} / GOLD {{ bnxStore.goldBalance }}

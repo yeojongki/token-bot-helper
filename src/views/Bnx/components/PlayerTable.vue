@@ -25,6 +25,7 @@
         { text: '盗贼', value: '盗贼' },
         { text: '法师', value: '法师' },
         { text: '游侠', value: '游侠' },
+        { text: '卡特莉娜', value: '卡特莉娜' },
       ]"
       :onFilter="onRoleFilter"
     ></a-table-column>

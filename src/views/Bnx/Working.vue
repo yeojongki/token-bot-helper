@@ -1,6 +1,6 @@
 <template>
   <a-card class="page-bnx">
-    <template #header>
+    <template #title>
       <div class="flex justify-between items-center">
         <div class="flex">
           <div>打工列表 ({{ workingList.length }})</div>
@@ -38,15 +38,13 @@
           type="primary"
           :disabled="!workingSelection.length"
           :api="batchGetAwards"
-          >批量获取受益</async-button
-        >
+        >批量获取受益</async-button>
         <async-button
           class="ml-10"
           type="primary"
           :disabled="!workingSelection.length"
           :api="batchQuitWork"
-          >批量退出工作</async-button
-        >
+        >批量退出工作</async-button>
       </div>
     </div>
 
@@ -80,8 +78,7 @@
         :disabled="transferTo.length !== 42 || !noWorkingSelection.length"
         type="primary"
         :api="transferRole"
-        >转移选中角色</async-button
-      >
+      >转移选中角色</async-button>
     </div>
 
     <div class="flex items-center mb-10">
@@ -95,8 +92,7 @@
         :disabled="batchAuctionPrice <= 0 || !noWorkingSelection.length"
         type="primary"
         :api="batchAuction"
-        >批量发布拍卖</async-button
-      >
+      >批量发布拍卖</async-button>
     </div>
 
     <div class="mb-20 flex items-center justify-end">
@@ -104,8 +100,7 @@
         type="primary"
         :disabled="!noWorkingSelection.length"
         :api="batchGoWork"
-        >批量打工</async-button
-      >
+      >批量打工</async-button>
     </div>
 
     <player-table

@@ -1,6 +1,6 @@
 <template>
   <a-card class="page-bnx">
-    <template #header>
+    <template #title>
       <div class="flex items-center justify-between">
         <div class="flex items-center">
           <div class="mr-10">市场列表</div>
@@ -16,7 +16,7 @@
     </div>-->
 
     <a-card>
-      <template #header>
+      <template #title>
         <div class="flex items-center">
           <div class="mr-10">列表配置</div>
           <a-button
@@ -38,7 +38,7 @@
     </a-card>
 
     <a-card class="mt-20">
-      <template #header>
+      <template #title>
         <div class="flex items-center">
           <div class="mr-10">自动购买配置</div>
           <a-switch
@@ -188,6 +188,12 @@ import { getFromStorage, setToStorage } from '@/utils/storage'
 import PlayerTable from './components/PlayerTable.vue'
 import { message } from 'ant-design-vue'
 
+/**
+ * 市场列表接口地址
+ */
+// https://xs32rpc4.dsceshi.cn/getSales
+// https://market.binaryx.pro/getSales
+const apiUrl = 'https://xs32rpc4.dsceshi.cn/getSales'
 const router = useRouter()
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
@@ -289,7 +295,7 @@ async function getList(page = 1) {
     }
 
     const { code, data } = await get(
-      `https://xs32rpc4.dsceshi.cn/getSales`,
+      apiUrl,
       params,
     )
     if (code === 0 && data?.result && data?.result?.items) {
@@ -398,10 +404,10 @@ async function getList(page = 1) {
               item.paybackCycle === item.paybackCycle3
                 ? 3
                 : item.paybackCycle === item.paybackCycle4
-                ? 4
-                : item.paybackCycle === item.paybackCycle5
-                ? 5
-                : 0
+                  ? 4
+                  : item.paybackCycle === item.paybackCycle5
+                    ? 5
+                    : 0
           } else {
             item.paybackCycle = getPaybackCycle({
               ...item,
