@@ -293,8 +293,7 @@ async function getList(page = 1) {
   try {
     const params = {
       page,
-      // page_size: 70,
-      // ...searchParams,
+      ...searchParams,
     }
 
     const { code, data } = await get(apiUrl, params)
