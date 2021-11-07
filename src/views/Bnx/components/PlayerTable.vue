@@ -246,12 +246,12 @@
 </template>
 
 <script setup lang="ts">
+import { PropType, ref } from 'vue'
+import type { TableProps } from 'ant-design-vue'
 import { useBnxStore } from '@/store/bnx'
 import copyText from '@/utils/copyText'
-import { PropType, ref } from 'vue'
 import { contractAddress, getUpgradeCostBnx } from '../common'
-import type { Hero } from '../common'
-import { TableProps } from 'ant-design-vue'
+import type { Hero, ActionType } from '../common'
 
 const props = defineProps({
   api: {
@@ -280,6 +280,15 @@ const getList = async () => {
   const list = await props.api()
   dataSource.value = list
 }
+
+/**
+ * 暴露接口
+ */
+defineExpose({
+  refresh() {
+    return getList()
+  },
+})
 
 /**
  * 复制 token ID

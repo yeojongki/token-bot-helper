@@ -30,7 +30,7 @@
         <div class="mr-10">刷新间隔:</div>
         <a-input-number
           @change="handleIntervalChange"
-          v-model="getListInterval"
+          v-model:value="getListInterval"
           :step-strictly="true"
           :step="100"
         ></a-input-number>
@@ -43,7 +43,7 @@
           <div class="mr-10">自动购买配置</div>
           <a-switch
             class="ml-10"
-            v-model="autoBuy.open"
+            v-model:checked="autoBuy.open"
             :active-text="autoBuy.open ? '已开启' : '已关闭'"
           ></a-switch>
         </div>
@@ -54,7 +54,7 @@
           <div class="flex items-center ml-10 mb-10">
             <div class="mr-10">零工最高价:</div>
             <a-input-number
-              v-model="autoBuy.partTimePrice"
+              v-model:value="autoBuy.partTimePrice"
               :step-strictly="true"
               :step="0.01"
             ></a-input-number>
@@ -65,7 +65,7 @@
           <div class="flex items-center ml-10 mb-10">
             <div class="mr-10">Gas Price:</div>
             <a-input-number
-              v-model="autoBuy.gasPrice"
+              v-model:value="autoBuy.gasPrice"
               :step-strictly="true"
               :step="1"
             ></a-input-number>
@@ -76,7 +76,7 @@
           <div class="flex items-center ml-10 mb-10">
             <div class="mr-10">Gas Limit:</div>
             <a-input-number
-              v-model="autoBuy.gasLimit"
+              v-model:value="autoBuy.gasLimit"
               :step-strictly="true"
               :step="10000"
             ></a-input-number>
@@ -96,17 +96,17 @@
 
     <a-card class="mt-20 mb-20" header="搜索参数">
       <a-form :model="searchParams" ref="searchForm">
-        <a-form-item label="状态" name="status">
-          <a-select v-model="searchParams.status">
-            <a-select-option value label="全部"></a-select-option>
-            <a-select-option value="selling" label="出售中"></a-select-option>
-            <a-select-option value="finish" label="已结束"></a-select-option>
+        <a-form-item label="状态">
+          <a-select v-model:value="searchParams.status">
+            <a-select-option value="">全部</a-select-option>
+            <a-select-option value="selling">出售中</a-select-option>
+            <a-select-option value="finish">已结束</a-select-option>
           </a-select>
         </a-form-item>
 
-        <a-form-item label="角色" name="career">
-          <a-select v-model="searchParams.career">
-            <a-select-option value label="全部"></a-select-option>
+        <a-form-item label="角色">
+          <a-select v-model:value="searchParams.career">
+            <a-select-option value="">全部</a-select-option>
             <a-select-option
               v-for="item in roleList"
               :label="item.name"
@@ -116,30 +116,30 @@
           </a-select>
         </a-form-item>
 
-        <a-form-item label="排序属性" name="sort">
-          <a-select v-model="searchParams.sort">
-            <a-select-option value="total" label="总属性值"></a-select-option>
-            <a-select-option value="price" label="价格"></a-select-option>
-            <a-select-option value="time" label="时间"></a-select-option>
-            <a-select-option value="strength" label="力量"></a-select-option>
-            <a-select-option value="agility" label="敏捷"></a-select-option>
-            <a-select-option value="physique" label="体质"></a-select-option>
-            <a-select-option value="volition" label="意志"></a-select-option>
-            <a-select-option value="brains" label="智力"></a-select-option>
-            <a-select-option value="charm" label="精神"></a-select-option>
+        <a-form-item label="排序属性">
+          <a-select v-model:value="searchParams.sort">
+            <a-select-option value="total">总属性值</a-select-option>
+            <a-select-option value="price">价格</a-select-option>
+            <a-select-option value="time">时间</a-select-option>
+            <a-select-option value="strength">力量</a-select-option>
+            <a-select-option value="agility">敏捷</a-select-option>
+            <a-select-option value="physique">体质</a-select-option>
+            <a-select-option value="volition">意志</a-select-option>
+            <a-select-option value="brains">智力</a-select-option>
+            <a-select-option value="charm">精神</a-select-option>
           </a-select>
         </a-form-item>
 
-        <a-form-item label="升降序" name="direction">
-          <a-select v-model="searchParams.direction">
-            <a-select-option value="desc" label="降序"></a-select-option>
-            <a-select-option value="asc" label="升序"></a-select-option>
+        <a-form-item label="升降序">
+          <a-select v-model:value="searchParams.direction">
+            <a-select-option value="desc">降序</a-select-option>
+            <a-select-option value="asc">升序</a-select-option>
           </a-select>
         </a-form-item>
 
-        <a-form-item label="分页数量" name="page_size">
+        <a-form-item label="分页数量">
           <a-input-number
-            v-model="searchParams.page_size"
+            v-model:value="searchParams.page_size"
             :step="1"
             :step-strictly="true"
           ></a-input-number>
@@ -156,6 +156,7 @@
 
     <!-- 市场列表表格 -->
     <player-table
+      ref="actionRef"
       :api="getList"
       :is-marketing="true"
       :on-selectionChange="selectionChange"
@@ -169,6 +170,7 @@ import { utils } from 'ethers'
 import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import qs from 'qs'
+import { message } from 'ant-design-vue'
 import { useRef } from '@/hooks/useRef'
 import {
   checkIsAdvancePlayer,
@@ -178,7 +180,7 @@ import {
   roleList,
   getSaleContract,
 } from './common'
-import type { Hero, WorkingHero } from './common'
+import type { Hero, WorkingHero, ActionType } from './common'
 import { promisePoll } from '@/utils'
 import { get } from '@/utils/request'
 import { useBnxStore } from '@/store/bnx'
@@ -186,14 +188,13 @@ import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 import { bnxNamespace } from '@/constants/namespace'
 import { getFromStorage, setToStorage } from '@/utils/storage'
 import PlayerTable from './components/PlayerTable.vue'
-import { message } from 'ant-design-vue'
 
 /**
  * 市场列表接口地址
  */
 // https://xs32rpc4.dsceshi.cn/getSales
 // https://market.binaryx.pro/getSales
-const apiUrl = 'https://xs32rpc4.dsceshi.cn/getSales'
+const apiUrl = 'https://market.binaryx.pro/info/getSales'
 const router = useRouter()
 const { wallet } = useActiveProvider()
 const bnxStore = useBnxStore()
@@ -203,6 +204,8 @@ const saleContractNew = getSaleContract(wallet)
  * form 表单 ref
  */
 const searchForm = ref()
+
+const actionRef = ref(undefined as ActionType | undefined)
 
 /**
  * 请求列表间隔
@@ -290,14 +293,11 @@ async function getList(page = 1) {
   try {
     const params = {
       page,
-      page_size: 70,
-      ...searchParams,
+      // page_size: 70,
+      // ...searchParams,
     }
 
-    const { code, data } = await get(
-      apiUrl,
-      params,
-    )
+    const { code, data } = await get(apiUrl, params)
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
 
@@ -404,10 +404,10 @@ async function getList(page = 1) {
               item.paybackCycle === item.paybackCycle3
                 ? 3
                 : item.paybackCycle === item.paybackCycle4
-                  ? 4
-                  : item.paybackCycle === item.paybackCycle5
-                    ? 5
-                    : 0
+                ? 4
+                : item.paybackCycle === item.paybackCycle5
+                ? 5
+                : 0
           } else {
             item.paybackCycle = getPaybackCycle({
               ...item,
@@ -423,7 +423,6 @@ async function getList(page = 1) {
       )
 
       return marketList.value
-      // .sort((a: any, b: any) => a.block_number - b.block_number)
     }
   } catch (err) {
     message.error!({
@@ -525,14 +524,14 @@ function toggleShouldWatch(closed?: boolean) {
     bnxStore.updateBnxAndGold()
   }
 }
-
 // 更新 bnx gold 价格和余额
 bnxStore.updateBnxAndGold()
 
 // 更新列表
-let pollList = promisePoll(async () => {
-  await getList()
-}, getListInterval.value)
+let pollList = promisePoll(
+  async () => actionRef.value?.refresh(),
+  getListInterval.value,
+)
 
 effect(() => {
   if (watchOpened.value) {
@@ -544,7 +543,7 @@ effect(() => {
 
 if (watchOpened.value) {
   // 执行
-  // pollList.start()
+  pollList.start()
 }
 
 // 卸载移除轮训定时器

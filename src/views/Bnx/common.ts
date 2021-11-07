@@ -8,6 +8,10 @@ import bookMangeABI from './abi/bookManage'
 import SaleNewABI from './abi/saleNew'
 import { toFixed } from '@/utils'
 
+export interface ActionType {
+  refresh: () => Promise<any>
+}
+
 export interface Hero {
   tokenId: string
   /**
