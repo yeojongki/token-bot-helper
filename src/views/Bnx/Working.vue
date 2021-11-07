@@ -473,7 +473,7 @@ function batchGetAwards() {
  * 获取未打工列表 (只做了获取最普通工作)
  */
 async function getPlayersNoWorking() {
-  const counts: any = Promise.all([
+  const counts = await Promise.all([
     contracts.WarriorAddress.balanceOf(account),
     contracts.RobberAddress.balanceOf(account),
     contracts.MageAddress.balanceOf(account),

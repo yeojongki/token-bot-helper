@@ -19,6 +19,7 @@
     <a-table-column
       data-index="role"
       title="角色"
+      :width="80"
       :filters="[
         { text: '战士', value: '战士' },
         { text: '盗贼', value: '盗贼' },
@@ -57,6 +58,7 @@
       data-index="isAdvance"
       :sorter="(a:any, b:any) => sorter(a, b, 'isAdvance')"
       title="合格"
+      :width="80"
     >
       <template #default="{ record }">
         <div>{{ record.isAdvance ? '✅' : '❌' }}</div>
@@ -269,41 +271,6 @@ const dataSource = ref([])
 const bnxStore = useBnxStore()
 const { WarriorAddress, RangerAddress, MageAddress, RobberAddress } =
   contractAddress
-
-const columns = [
-  { title: 'Token ID', key: 'tokenId', width: 100 },
-  {
-    title: '角色',
-    key: 'role',
-    width: 80,
-    filtered: true,
-    filters: [
-      { text: '战士', value: '战士' },
-      { text: '盗贼', value: '盗贼' },
-      { text: '法师', value: '法师' },
-      { text: '游侠', value: '游侠' },
-    ],
-    onFilter: (value: string, record: any) => record.role === value,
-  },
-  { title: '等级', key: 'level', width: 80 },
-  {
-    title: '合格',
-    key: 'isAdvance',
-    width: 80,
-    sorter: (a: any, b: any) => a.isAdvance - b.isAdvance,
-  },
-  { title: '收益', key: 'income', width: 80, sortable: true },
-  { title: '日收益', key: 'goldDaily', width: 90, sortable: true },
-  { title: '价格', key: 'price', width: 120, sortable: true },
-  { title: '价格', key: 'price', width: 120, sortable: true },
-  { title: '总属性', key: 'total', width: 90, sortable: true },
-  { title: '力量', key: 'strength', width: 120, sortable: true },
-  { title: '敏捷', key: 'agility', width: 120, sortable: true },
-  { title: '智力', key: 'intelligence', width: 120, sortable: true },
-  { title: '体质', key: 'constitution', width: 120, sortable: true },
-  { title: '意志', key: 'willpower', width: 120, sortable: true },
-  { title: '精神', key: 'spirit', width: 120, sortable: true },
-].map(item => ({ ...item, dataIndex: item.key }))
 
 /**
  * 请求列表数据
