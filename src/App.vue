@@ -24,5 +24,5 @@ nonceStore.updateLatestNonce()
 
 <style>
 @import 'normalize.css';
-@import './styles/global.scss';
+@import './styles/global.less';
 </style>

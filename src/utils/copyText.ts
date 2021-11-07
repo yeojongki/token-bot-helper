@@ -1,4 +1,5 @@
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
+
 let copyId = 0
 
 interface CopyTextConfig {
@@ -19,7 +20,7 @@ export default function copyText(text: string, config?: CopyTextConfig) {
   document.execCommand('copy')
 
   if (!config?.hideSuccess) {
-    ElMessage.success('复制成功')
+    message.success('复制成功')
   }
 
   setTimeout(() => {

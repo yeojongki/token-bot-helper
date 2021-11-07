@@ -1,5 +1,5 @@
 <template>
-  <el-card class="page-bnx">
+  <a-card class="page-bnx">
     <template #header>
       <div class="flex justify-between items-center">
         <div class="flex">
@@ -25,10 +25,10 @@
     <div class="mb-20 flex items-center justify-between">
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
-        <el-input-number
+        <a-input-number
           v-model="batcGetAwardsMin"
           class="ml-10 mr-10"
-        ></el-input-number>
+        ></a-input-number>
       </div>
 
       <!-- :disabled="!workingSelection.length" -->
@@ -53,7 +53,12 @@
     <!-- :show-summary="true"
     sum-text="合计"
     :summary-method="getIncomeSummaries"-->
-    <el-table
+    <player-table
+      :api="getWorkingPlayers"
+      :is-working="true"
+      :on-selection-change="workingSelectionChange"
+    ></player-table>
+    <!-- <el-table
       height="500"
       :data="workingList"
       :border="true"
@@ -61,21 +66,16 @@
       @selection-change="workingSelectionChange"
     >
       <props-column :is-working="true"></props-column>
-      <!-- <el-table-column label="操作">
-        <template #default="{ row }">
-          <el-button type="primary" size="small" @click="getAwardByTokenId(row.tokenId, row.isAdvanceJob)">获取收益</el-button>
-        </template>
-      </el-table-column>-->
-    </el-table>
-  </el-card>
+    </el-table> -->
+  </a-card>
 
-  <el-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
+  <a-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
     <div class="flex mb-10">
-      <el-input
+      <a-input
         v-model="transferTo"
         placeholder="请输入将要转移到的钱包地址"
         class="mr-10"
-      ></el-input>
+      ></a-input>
       <async-button
         :disabled="transferTo.length !== 42 || !noWorkingSelection.length"
         type="primary"
@@ -86,11 +86,11 @@
 
     <div class="flex items-center mb-10">
       <!-- <div>批量拍卖价格：</div> -->
-      <el-input-number
+      <a-input-number
         :min="0"
         v-model="batchAuctionPrice"
         class="mr-10 flex-1"
-      ></el-input-number>
+      ></a-input-number>
       <async-button
         :disabled="batchAuctionPrice <= 0 || !noWorkingSelection.length"
         type="primary"
@@ -100,9 +100,7 @@
     </div>
 
     <div class="mb-20 flex items-center justify-end">
-      <!-- :disabled="!noWorkingSelection.length"  -->
       <async-button
-        class="ml-10"
         type="primary"
         :disabled="!noWorkingSelection.length"
         :api="batchGoWork"
@@ -110,24 +108,21 @@
       >
     </div>
 
-    <el-table
-      @selection-change="noWorkingSelectionChange"
-      height="500"
-      :data="noWorkingList"
-      :border="true"
-    >
-      <props-column :is-no-working="true"></props-column>
-    </el-table>
-  </el-card>
+    <player-table
+      :api="getPlayersNoWorking"
+      :is-no-working="true"
+      :on-selectionChange="noWorkingSelectionChange"
+    ></player-table>
+  </a-card>
 
-  <el-card class="page-bnx" header="工具">
+  <a-card class="page-bnx" header="工具">
     <div class="flex">
-      <!-- <el-input-number
+      <!-- <a-input-number
         v-model="batchNewPlayerCount"
         :step="1"
         placeholder="请输入批量抽卡数量"
         class="mr-10"
-      ></el-input-number>-->
+      ></a-input-number>-->
       <async-button
         :disabled="bnxStore.bnxBalance < 1"
         type="primary"
@@ -135,31 +130,23 @@
         >抽卡1次</async-button
       >
       <async-button
+        class="ml-10"
         :disabled="bnxStore.bnxBalance < 5"
         type="primary"
         :api="batchNewPlayer"
         >批量抽卡5次</async-button
       >
     </div>
-  </el-card>
+  </a-card>
 </template>
 
 <script setup lang="ts">
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { Contract } from '@ethersproject/contracts'
-import {
-  ElCard,
-  ElInputNumber,
-  ElTable,
-  ElInput,
-  ElButton,
-  ElMessage,
-  ElNotification,
-} from 'element-plus'
 import { utils } from 'ethers'
 import { computed, ref } from 'vue'
 import type { Ref } from 'vue'
-import type { TableColumnCtx } from 'element-plus/lib/components/table/src/table-column/defaults'
+import { message } from 'ant-design-vue'
 import {
   contractAddress,
   getContracts,
@@ -171,12 +158,12 @@ import {
 } from './common'
 import type { Hero, WorkingHero } from './common'
 import { useBnxStore } from '@/store/bnx'
-import PropsColumn from './components/PropsColumn.vue'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 import { toFixed } from '@/utils'
 import AsyncButton from '@/components/AsyncButton/index.vue'
 import { useNonceStore } from '@/store/nonce'
 import { TX_QUEUE_MAXIMUM } from '@/constants'
+import PlayerTable from './components/PlayerTable.vue'
 
 const { provider, account, wallet } = useActiveProvider()
 const contracts = getContracts(wallet)
@@ -421,22 +408,7 @@ async function getWorkingPlayers() {
 
   const datas = await Promise.all(promiseDatas)
   workingList.value = datas
-}
-
-/**
- * 获取单个角色奖励 (金币)
- */
-async function getAwardByTokenId(tokenId: string, isAdvanceJob: boolean) {
-  try {
-    const tx = isAdvanceJob
-      ? await contracts.NewMiningAddress.getAward(tokenId)
-      : await contracts.MiningAddress.getAward(tokenId)
-    await tx.wait()
-    ElMessage.success('获取成功')
-  } catch (error) {
-    ElMessage.error('获取失败, 请重试')
-    console.log(error)
-  }
+  return datas
 }
 
 /**
@@ -444,7 +416,7 @@ async function getAwardByTokenId(tokenId: string, isAdvanceJob: boolean) {
  */
 function batchGetAwards() {
   return new Promise<void>((resolve, reject) => {
-    const msg = ElMessage({
+    const msg = message({
       type: 'info',
       message: '批量获取角色奖励中, 请勿发生交易操作',
       duration: 0,
@@ -458,7 +430,7 @@ function batchGetAwards() {
         .filter(item => item.incomeUsd > batcGetAwardsMin.value)
         .slice(0, TX_QUEUE_MAXIMUM)
         .map(({ tokenId, isAdvanceJob }, index) => {
-          // const itemMsg = ElMessage({
+          // const itemMsg = message({
           //   type: 'info',
           //   duration: 0,
           //   message: `开始领取 ${tokenId}`,
@@ -474,7 +446,7 @@ function batchGetAwards() {
             .then((tx: any) => tx.wait())
             .then(() => {
               // itemMsg.close()
-              // ElMessage.success(`${tokenId}已领取`)
+              // message.success(`${tokenId}已领取`)
             })
             .catch((err: any) => console.error(err))
         })
@@ -483,14 +455,14 @@ function batchGetAwards() {
         .then(() => {
           msg.close()
           console.log('批量领取完成')
-          ElMessage.success(`批量领取完成`)
+          message.success(`批量领取完成`)
           // 刷新打工列表
           getWorkingPlayers()
           resolve()
         })
         .catch(err => {
           console.error(err)
-          ElMessage.error(`批量领取失败`)
+          message.error(`批量领取失败`)
           reject()
         })
     })
@@ -498,74 +470,37 @@ function batchGetAwards() {
 }
 
 /**
- * @deprecated
- * 收入总计
- */
-function getIncomeSummaries(param: {
-  columns: TableColumnCtx<any>
-  data: WorkingHero[]
-}) {
-  const { columns, data } = param
-  const sums: string[] = []
-  // @ts-ignore
-  columns.forEach((column, index) => {
-    if (index === 0) {
-      sums[index] = '总计'
-      return
-    }
-
-    if (column.property === 'income') {
-      const values = data.map(item => {
-        return Number(item[column.property as keyof WorkingHero])
-      })
-      sums[index] = `${values
-        .reduce((prev, curr) => {
-          const value = Number(curr)
-          return prev + curr
-        }, 0)
-        .toFixed(2)}`
-    } else {
-      sums[index] = ''
-    }
-  })
-
-  return sums
-}
-
-/**
  * 获取未打工列表 (只做了获取最普通工作)
  */
-function getPlayersNoWorking() {
-  Promise.all([
+async function getPlayersNoWorking() {
+  const counts: any = Promise.all([
     contracts.WarriorAddress.balanceOf(account),
     contracts.RobberAddress.balanceOf(account),
     contracts.MageAddress.balanceOf(account),
     contracts.RangerAddress.balanceOf(account),
-  ]).then(res => {
-    const totalCountArray = res.map(Number)
-    const [warriorCount, robberCount, mageCount, rangerCount] = totalCountArray
+  ])
 
-    const promiseDatas: Promise<Hero>[] = []
-    for (let i = 0; i < warriorCount; i++) {
-      promiseDatas.push(getPlayerInfo(i, contracts.WarriorAddress))
-    }
+  const totalCountArray = counts.map(Number)
+  const [warriorCount, robberCount, mageCount, rangerCount] = totalCountArray
 
-    for (let i = 0; i < robberCount; i++) {
-      promiseDatas.push(getPlayerInfo(i, contracts.RobberAddress))
-    }
+  const promiseDatas: Promise<Hero>[] = []
+  for (let i = 0; i < warriorCount; i++) {
+    promiseDatas.push(getPlayerInfo(i, contracts.WarriorAddress))
+  }
 
-    for (let i = 0; i < mageCount; i++) {
-      promiseDatas.push(getPlayerInfo(i, contracts.MageAddress))
-    }
+  for (let i = 0; i < robberCount; i++) {
+    promiseDatas.push(getPlayerInfo(i, contracts.RobberAddress))
+  }
 
-    for (let i = 0; i < rangerCount; i++) {
-      promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
-    }
+  for (let i = 0; i < mageCount; i++) {
+    promiseDatas.push(getPlayerInfo(i, contracts.MageAddress))
+  }
 
-    Promise.all(promiseDatas).then(res => {
-      noWorkingList.value = res
-    })
-  })
+  for (let i = 0; i < rangerCount; i++) {
+    promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
+  }
+
+  return await Promise.all(promiseDatas)
 }
 
 /**
@@ -573,7 +508,7 @@ function getPlayersNoWorking() {
  */
 function batchGoWork() {
   return new Promise<void>((resolve, reject) => {
-    const msg = ElMessage({
+    const msg = message({
       type: 'info',
       message: '批量打工中, 请勿发生交易操作',
       duration: 0,
@@ -594,7 +529,7 @@ function batchGoWork() {
           )
             .then((tx: any) => tx.wait())
             .then(() => {
-              ElMessage.success(`${tokenId}已打工`)
+              message.success(`${tokenId}已打工`)
             })
             .catch((err: any) => console.error(err)),
         )
@@ -602,14 +537,14 @@ function batchGoWork() {
       Promise.all(promises)
         .then(() => {
           msg.close()
-          ElMessage.success(`批量打工完成`)
+          message.success(`批量打工完成`)
           console.log(`批量打工完成`)
           requestList()
           resolve()
         })
         .catch(err => {
           console.error(err)
-          ElMessage.error(`批量打工失败`)
+          message.error(`批量打工失败`)
           reject()
         })
     })
@@ -623,7 +558,7 @@ function batchAuction() {
   return new Promise<void>((resolve, reject) => {
     const saleContractNew = getSaleContract(wallet)
 
-    const msg = ElMessage({
+    const msg = message({
       type: 'info',
       message: '批量拍卖中, 请勿发生交易操作',
       duration: 0,
@@ -662,7 +597,7 @@ function batchAuction() {
             .then((tx: any) => tx.wait())
             .then(() => {
               // resolve()
-              ElMessage.success(`${tokenId}已拍卖`)
+              message.success(`${tokenId}已拍卖`)
             })
             .catch((err: any) => {
               // reject(err)
@@ -674,14 +609,14 @@ function batchAuction() {
       Promise.all(promises)
         .then(() => {
           msg.close()
-          ElMessage.success(`批量拍卖完成`)
+          message.success(`批量拍卖完成`)
           console.log(`批量拍卖完成`)
           getPlayersNoWorking()
           resolve()
         })
         .catch(err => {
           console.error(err)
-          ElMessage.error(`批量拍卖失败`)
+          message.error(`批量拍卖失败`)
           reject()
         })
     })
@@ -692,12 +627,12 @@ function batchAuction() {
  * 批量转移选中角色执行
  */
 async function transferRole() {
-  // await ElMessageBox.confirm(`确认转移 ${noWorkingList.value.length} 个角色到 ${transferTo.value} ?`)
+  // await messageBox.confirm(`确认转移 ${noWorkingList.value.length} 个角色到 ${transferTo.value} ?`)
   // TODO 授权
   // const approvedTx = await contracts.WarriorAddress.setApprovalForAll(contractAddress.NewMiningAddress, true)
   // await approvedTx.wait()
 
-  const msg = ElMessage({
+  const msg = message({
     type: 'info',
     message: '批量转移中, 请勿发生交易操作',
     duration: 0,
@@ -729,7 +664,7 @@ async function transferRole() {
           })
           .then((tx: any) => tx.wait())
           .then(() => {
-            ElMessage.success(`转移${item.tokenId}成功`)
+            message.success(`转移${item.tokenId}成功`)
           })
           .catch((err: any) => console.error(err))
       }
@@ -740,7 +675,7 @@ async function transferRole() {
   await Promise.all(promises)
   msg.close()
   console.log('转移完成')
-  ElMessage({
+  message({
     type: 'success',
     message: '转移完成',
   })
@@ -753,7 +688,7 @@ async function transferRole() {
  */
 function batchQuitWork() {
   return new Promise<void>((resolve, reject) => {
-    const msg = ElMessage({
+    const msg = message({
       type: 'info',
       message: '批量退出工作中, 请勿发生交易操作',
       duration: 0,
@@ -765,7 +700,7 @@ function batchQuitWork() {
       const promises = workingSelection.value
         .slice(0, TX_QUEUE_MAXIMUM)
         .map(({ tokenId, isAdvanceJob }, index) => {
-          // const itemMsg = ElMessage({
+          // const itemMsg = message({
           //   type: 'info',
           //   duration: 0,
           //   message: `${tokenId} 正在退出工作`,
@@ -782,7 +717,7 @@ function batchQuitWork() {
             .then((tx: any) => tx.wait())
             .then(() => {
               // itemMsg.close()
-              ElMessage.success(`${tokenId}已退出工作`)
+              message.success(`${tokenId}已退出工作`)
             })
             .catch((err: any) => console.error(err))
         })
@@ -790,7 +725,7 @@ function batchQuitWork() {
       Promise.all(promises)
         .then(() => {
           msg.close()
-          ElMessage.success(`批量退出工作完成`)
+          message.success(`批量退出工作完成`)
           console.log(`批量退出工作完成`)
           requestList()
           resolve()
@@ -798,7 +733,7 @@ function batchQuitWork() {
         .catch(err => {
           console.error(err)
           reject(err)
-          ElMessage.error(`批量退出工作发生错误`)
+          message.error(`批量退出工作发生错误`)
         })
     })
   })
@@ -814,11 +749,11 @@ async function batchNewPlayer() {
       utils.parseUnits(`${batchNewPlayerCount.value}`, 'ether'),
     )
     await tx.wait()
-    ElMessage.success('批量抽卡成功')
+    message.success('批量抽卡成功')
 
     requestList()
   } catch (error) {
-    ElNotification({
+    message({
       type: 'error',
       message: '批量抽卡失败',
       duration: 0,
@@ -837,11 +772,11 @@ async function getNewPlayerOne() {
       utils.parseUnits('1', 'ether'),
     )
     await tx.wait()
-    ElMessage.success('已抽卡1次')
+    message.success('已抽卡1次')
 
     requestList()
   } catch (error) {
-    ElNotification({
+    message({
       type: 'error',
       message: '抽卡1次失败',
       duration: 0,
@@ -858,7 +793,3 @@ const requestList = () => {
 
 requestList()
 </script>
-
-<style lang="scss" scoped>
-@import './style.scss';
-</style>

@@ -1,5 +1,5 @@
 <template>
-  <el-card class="page-bnx">
+  <a-card class="page-bnx">
     <template #header>
       <div class="flex items-center justify-between">
         <div class="flex items-center">
@@ -12,185 +12,159 @@
       </div>
     </template>
     <!-- <div class="mb-10 flex items-center">
-      <el-button :disabled="!selection.length" class="ml-10" type="primary" @click="batchBuy">批量购买</el-button>
+      <a-button :disabled="!selection.length" class="ml-10" type="primary" @click="batchBuy">批量购买</a-button>
     </div>-->
 
-    <el-card>
+    <a-card>
       <template #header>
         <div class="flex items-center">
           <div class="mr-10">列表配置</div>
-          <el-button
-            size="small"
+          <a-button
             @click="toggleShouldWatch()"
-            :type="watchOpened ? 'success' : 'info'"
-            >{{ watchOpened ? '监听中' : '已关闭监听' }}</el-button
+            :type="watchOpened ? 'primary' : 'default'"
+            >{{ watchOpened ? '监听中' : '已关闭监听' }}</a-button
           >
         </div>
       </template>
       <div class="flex items-center mr-10">
         <div class="mr-10">刷新间隔:</div>
-        <el-input-number
-          size="small"
+        <a-input-number
           @change="handleIntervalChange"
           v-model="getListInterval"
           :step-strictly="true"
           :step="100"
-        ></el-input-number>
+        ></a-input-number>
       </div>
-    </el-card>
+    </a-card>
 
-    <el-card class="mt-20">
+    <a-card class="mt-20">
       <template #header>
         <div class="flex items-center">
           <div class="mr-10">自动购买配置</div>
-          <el-switch
+          <a-switch
             class="ml-10"
             v-model="autoBuy.open"
             :active-text="autoBuy.open ? '已开启' : '已关闭'"
-          ></el-switch>
+          ></a-switch>
         </div>
       </template>
 
-      <el-row :gutter="20" align="center">
-        <el-col :xs="24" :sm="12" :md="8">
+      <a-row :gutter="20" align="middle">
+        <a-col :xs="24" :sm="12" :md="8">
           <div class="flex items-center ml-10 mb-10">
             <div class="mr-10">零工最高价:</div>
-            <el-input-number
-              size="small"
+            <a-input-number
               v-model="autoBuy.partTimePrice"
               :step-strictly="true"
               :step="0.01"
-            ></el-input-number>
+            ></a-input-number>
           </div>
-        </el-col>
+        </a-col>
 
-        <el-col :xs="24" :sm="12" :md="8">
+        <a-col :xs="24" :sm="12" :md="8">
           <div class="flex items-center ml-10 mb-10">
             <div class="mr-10">Gas Price:</div>
-            <el-input-number
-              size="small"
+            <a-input-number
               v-model="autoBuy.gasPrice"
               :step-strictly="true"
               :step="1"
-            ></el-input-number>
+            ></a-input-number>
           </div>
-        </el-col>
+        </a-col>
 
-        <el-col :xs="24" :sm="12" :md="8">
+        <a-col :xs="24" :sm="12" :md="8">
           <div class="flex items-center ml-10 mb-10">
             <div class="mr-10">Gas Limit:</div>
-            <el-input-number
-              size="small"
+            <a-input-number
               v-model="autoBuy.gasLimit"
               :step-strictly="true"
               :step="10000"
-            ></el-input-number>
+            ></a-input-number>
           </div>
-        </el-col>
-      </el-row>
-    </el-card>
+        </a-col>
+      </a-row>
+    </a-card>
 
-    <el-card class="mt-20 mb-20" header="操作">
-      <el-button
+    <a-card class="mt-20 mb-20" header="操作">
+      <a-button
         type="primary"
         :disabled="!selection.length"
         @click="buySelected"
-        >购买选中</el-button
+        >购买选中</a-button
       >
-    </el-card>
+    </a-card>
 
-    <el-card class="mt-20 mb-20" header="搜索参数">
-      <el-form :model="searchParams" ref="searchForm">
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="searchParams.status">
-            <el-option value="" label="全部"></el-option>
-            <el-option value="selling" label="出售中"></el-option>
-            <el-option value="finish" label="已结束"></el-option>
-          </el-select>
-        </el-form-item>
+    <a-card class="mt-20 mb-20" header="搜索参数">
+      <a-form :model="searchParams" ref="searchForm">
+        <a-form-item label="状态" name="status">
+          <a-select v-model="searchParams.status">
+            <a-select-option value label="全部"></a-select-option>
+            <a-select-option value="selling" label="出售中"></a-select-option>
+            <a-select-option value="finish" label="已结束"></a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="角色" prop="career">
-          <el-select v-model="searchParams.career">
-            <el-option value="" label="全部"></el-option>
-            <el-option
+        <a-form-item label="角色" name="career">
+          <a-select v-model="searchParams.career">
+            <a-select-option value label="全部"></a-select-option>
+            <a-select-option
               v-for="item in roleList"
               :label="item.name"
               :value="item.value"
-              >{{ item.name }}</el-option
+              >{{ item.name }}</a-select-option
             >
-          </el-select>
-        </el-form-item>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="排序属性" prop="sort">
-          <el-select v-model="searchParams.sort">
-            <el-option value="total" label="总属性值"></el-option>
-            <el-option value="price" label="价格"></el-option>
-            <el-option value="time" label="时间"></el-option>
-            <el-option value="strength" label="力量"></el-option>
-            <el-option value="agility" label="敏捷"></el-option>
-            <el-option value="physique" label="体质"></el-option>
-            <el-option value="volition" label="意志"></el-option>
-            <el-option value="brains" label="智力"></el-option>
-            <el-option value="charm" label="精神"></el-option>
-          </el-select>
-        </el-form-item>
+        <a-form-item label="排序属性" name="sort">
+          <a-select v-model="searchParams.sort">
+            <a-select-option value="total" label="总属性值"></a-select-option>
+            <a-select-option value="price" label="价格"></a-select-option>
+            <a-select-option value="time" label="时间"></a-select-option>
+            <a-select-option value="strength" label="力量"></a-select-option>
+            <a-select-option value="agility" label="敏捷"></a-select-option>
+            <a-select-option value="physique" label="体质"></a-select-option>
+            <a-select-option value="volition" label="意志"></a-select-option>
+            <a-select-option value="brains" label="智力"></a-select-option>
+            <a-select-option value="charm" label="精神"></a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="升降序" prop="direction">
-          <el-select v-model="searchParams.direction">
-            <el-option value="desc" label="降序"></el-option>
-            <el-option value="asc" label="升序"></el-option>
-          </el-select>
-        </el-form-item>
+        <a-form-item label="升降序" name="direction">
+          <a-select v-model="searchParams.direction">
+            <a-select-option value="desc" label="降序"></a-select-option>
+            <a-select-option value="asc" label="升序"></a-select-option>
+          </a-select>
+        </a-form-item>
 
-        <el-form-item label="分页数量" prop="page_size">
-          <el-input-number
+        <a-form-item label="分页数量" name="page_size">
+          <a-input-number
             v-model="searchParams.page_size"
             :step="1"
             :step-strictly="true"
-          ></el-input-number>
-        </el-form-item>
+          ></a-input-number>
+        </a-form-item>
 
-        <el-form-item>
-          <el-button type="primary" @click="saveSearchParams2Storage"
-            >保存参数</el-button
+        <a-form-item>
+          <a-button type="primary" @click="saveSearchParams2Storage"
+            >保存参数</a-button
           >
-          <el-button @click="resetSearchForm">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+          <a-button class="ml-10" @click="resetSearchForm">重置</a-button>
+        </a-form-item>
+      </a-form>
+    </a-card>
 
-    <!-- :default-sort="{ prop: 'price', order: 'ascending' }" -->
-    <el-table
-      row-key="tokenId"
-      :height="500"
-      :data="marketList"
-      :border="true"
-      @selection-change="selectionChange"
-    >
-      <!-- 封装属性列 -->
-      <props-column :is-marketing="true"></props-column>
-    </el-table>
-  </el-card>
+    <!-- 市场列表表格 -->
+    <player-table
+      :api="getList"
+      :is-marketing="true"
+      :on-selectionChange="selectionChange"
+    ></player-table>
+  </a-card>
 </template>
 
 <script setup lang="ts">
 import { useActiveProvider } from '@/hooks/useActiveProvider'
-import { Contract } from '@ethersproject/contracts'
-import {
-  ElCard,
-  ElSwitch,
-  ElInputNumber,
-  ElTable,
-  ElButton,
-  ElMessage,
-  ElNotification,
-  ElForm,
-  ElFormItem,
-  ElSelect,
-  ElOption,
-  ElRow,
-  ElCol,
-} from 'element-plus'
 import { utils } from 'ethers'
 import { effect, onUnmounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -207,11 +181,12 @@ import {
 import type { Hero, WorkingHero } from './common'
 import { promisePoll } from '@/utils'
 import { get } from '@/utils/request'
-import PropsColumn from './components/PropsColumn.vue'
 import { useBnxStore } from '@/store/bnx'
 import BnxGoldPriceBalance from './components/BnxGoldPriceBalance.vue'
 import { bnxNamespace } from '@/constants/namespace'
 import { getFromStorage, setToStorage } from '@/utils/storage'
+import PlayerTable from './components/PlayerTable.vue'
+import { message } from 'ant-design-vue'
 
 const router = useRouter()
 const { wallet } = useActiveProvider()
@@ -300,11 +275,6 @@ const searchParams = reactive({
  */
 function selectionChange(val: WorkingHero[]) {
   selection.value = val
-
-  if (watchOpened.value) {
-    // 停止刷新列表防止勾选重置
-    toggleShouldWatch(true)
-  }
 }
 
 /**
@@ -324,10 +294,6 @@ async function getList(page = 1) {
     )
     if (code === 0 && data?.result && data?.result?.items) {
       const items = data.result.items || []
-      // 关闭监听之后不刷新列表
-      // if (!watchOpened.value) {
-      //   return
-      // }
 
       marketList.value = items.map(
         (item: Hero & { price: number } & Record<string, any>) => {
@@ -449,10 +415,12 @@ async function getList(page = 1) {
           return item
         },
       )
+
+      return marketList.value
       // .sort((a: any, b: any) => a.block_number - b.block_number)
     }
   } catch (err) {
-    ElNotification.error!({
+    message.error!({
       message: '请求失败',
     })
   }
@@ -487,7 +455,7 @@ async function buySelected() {
     if (bnxStore.bnxBalance >= item.price) {
       buyPlayer(item.order_id, item.price)
     } else {
-      ElMessage.error('余额不足')
+      message.error('余额不足')
       console.error('余额不足')
     }
   })
@@ -497,11 +465,11 @@ async function buySelected() {
  * 购买角色
  */
 async function buyPlayer(orderId: string, price: number) {
-  const message = `正在购买 ${orderId}, 价格为${price}`
-  const buyingMsg = ElMessage({
+  const msg = `正在购买 ${orderId}, 价格为${price}`
+  const buyingMsg = message({
     type: 'info',
     duration: 0,
-    message,
+    message: msg,
   })
   console.log(message)
   try {
@@ -515,11 +483,11 @@ async function buyPlayer(orderId: string, price: number) {
 
     console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
 
-    ElMessage.success(`购买成功 ${orderId}, 价格为${price}`)
+    message.success(`购买成功 ${orderId}, 价格为${price}`)
     // 刷新 bnx 余额
     bnxStore.updateBnxAndGoldBalance()
   } catch (error) {
-    ElMessage.error(`已被购买或发生错误`)
+    message.error(`已被购买或发生错误`)
     console.error(error)
   } finally {
     buyingMsg.close()
@@ -570,7 +538,7 @@ effect(() => {
 
 if (watchOpened.value) {
   // 执行
-  pollList.start()
+  // pollList.start()
 }
 
 // 卸载移除轮训定时器
@@ -578,7 +546,3 @@ onUnmounted(() => {
   pollList.stop()
 })
 </script>
-
-<style lang="scss" scoped>
-@import './style.scss';
-</style>

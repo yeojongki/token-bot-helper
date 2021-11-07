@@ -8,17 +8,17 @@
         价格: BNX ${{ bnxStore.bnxPrice }} / GOLD ${{ bnxStore.goldPrice }}
       </div>
     </div>
-    <el-button
+    <a-button
       :loading="bnxStore.updateLoading"
       size="small"
+      type="primary"
       @click="bnxStore.updateBnxAndGold()"
-      >刷新</el-button
+      >刷新</a-button
     >
   </div>
 </template>
 
 <script setup lang="ts">
-import { ElButton } from 'element-plus'
 import { useBnxStore } from '@/store/bnx'
 
 const bnxStore = useBnxStore()

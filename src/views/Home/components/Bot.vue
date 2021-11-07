@@ -1,98 +1,63 @@
 <template>
-  <Form
-    :disabled="status.running"
-    class="Bot"
-    ref="formRef"
-    label-position="top"
-    :model="config"
-  >
-    <FormItem label="支出的 token 地址" name="poolContract" :required="true">
+  <a-form :disabled="status.running" class="Bot" ref="formRef" label-position="top" :model="config">
+    <a-form-item label="支出的 token 地址" name="poolContract" :required="true">
       <div class="flex">
-        <Select class="w-full" v-model="config.poolContract">
-          <SelectOption
-            v-for="item in baseTokens"
-            :value="item.address"
-            :label="item.name"
-          ></SelectOption>
-        </Select>
+        <a-select class="w-full" v-model="config.poolContract">
+          <a-select-option v-for="item in baseTokens" :value="item.address" :label="item.name"></a-select-option>
+        </a-select>
       </div>
-    </FormItem>
+    </a-form-item>
 
-    <FormItem
-      :label="`获得的 token 地址${
-        buyTokenPrice ? ` (当前价格：${buyTokenPrice})` : ''
+    <a-form-item
+      :label="`获得的 token 地址${buyTokenPrice ? ` (当前价格：${buyTokenPrice})` : ''
       }`"
       name="buyContract"
       :required="true"
     >
       <div class="flex">
-        <Input v-model="config.buyContract" />
-        <async-button :api="approveToken" type="primary" class="ml-10"
-          >授权</async-button
-        >
-        <Button
+        <a-input v-model="config.buyContract" />
+        <async-button :api="approveToken" type="primary" class="ml-10 mr-10">授权</async-button>
+        <a-button
           danger
           :loading="status.loopPriceStatus === 'loading'"
           @click="loopTokenPrice"
-        >
-          {{ status.loopPriceStatus === 'started' ? '停止' : '轮询' }}
-        </Button>
+        >{{ status.loopPriceStatus === 'started' ? '停止' : '轮询' }}</a-button>
       </div>
-    </FormItem>
+    </a-form-item>
 
-    <FormItem class="flex-1" label="买入数量" name="buyAmount" :required="true">
-      <InputNumber class="block" v-model="config.buyAmount" :min="1" />
-    </FormItem>
+    <a-form-item class="flex-1" label="买入数量" name="buyAmount" :required="true">
+      <a-input-number class="block" v-model="config.buyAmount" :min="1" />
+    </a-form-item>
 
     <div class="flex">
-      <FormItem class="flex-1" label="滑点" name="slippage">
-        <InputNumber
-          v-model="config.slippage"
-          :min="1"
-          :max="100"
-          :step="1"
-          step-strictly
-        />
-      </FormItem>
+      <a-form-item class="flex-1" label="滑点" name="slippage">
+        <a-input-number v-model="config.slippage" :min="1" :max="100" :step="1" step-strictly />
+      </a-form-item>
 
-      <FormItem class="flex-1 ml-10" label="池子规模" name="minPoolSize">
-        <InputNumber v-model="config.minPoolSize" :min="0" />
-      </FormItem>
+      <a-form-item class="flex-1 ml-10" label="池子规模" name="minPoolSize">
+        <a-input-number v-model="config.minPoolSize" :min="0" />
+      </a-form-item>
     </div>
 
     <div class="flex">
-      <FormItem class="flex-1" label="Gas Price (Gwei)" name="gasPrice">
-        <InputNumber v-model="config.gasPrice" :min="1" />
-      </FormItem>
+      <a-form-item class="flex-1" label="Gas Price (Gwei)" name="gasPrice">
+        <a-input-number v-model="config.gasPrice" :min="1" />
+      </a-form-item>
 
-      <FormItem class="flex-1 ml-10" label="Gas Limit" name="gasLimit">
-        <InputNumber v-model="config.gasLimit" :min="5" />
-      </FormItem>
+      <a-form-item class="flex-1 ml-10" label="Gas Limit" name="gasLimit">
+        <a-input-number v-model="config.gasLimit" :min="5" />
+      </a-form-item>
     </div>
 
-    <FormItem>
-      <Button type="primary" @click="submitForm">开始买入</Button>
-      <Button @click="resetForm">重置配置</Button>
-      <Button
-        @click="tokenListStore.updateEthPrice"
-        :loading="tokenListStore.loading"
-      >
-        更新 BNB 价格
-      </Button>
-    </FormItem>
-  </Form>
+    <a-form-item>
+      <a-button type="primary" class="mr-10" @click="submitForm">开始买入</a-button>
+      <a-button class="mr-10" @click="resetForm">重置配置</a-button>
+      <a-button @click="tokenListStore.updateEthPrice" :loading="tokenListStore.loading">更新 BNB 价格</a-button>
+    </a-form-item>
+  </a-form>
 </template>
 
 <script setup lang="ts">
-import {
-  Form,
-  FormItem,
-  Select,
-  SelectOption,
-  Button,
-  InputNumber,
-  Input,
-} from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRef } from '@/hooks/useRef'
 import { BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'

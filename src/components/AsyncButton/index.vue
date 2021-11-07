@@ -1,22 +1,15 @@
 <template>
-  <el-button
+  <a-button
     type="primary"
     v-bind="$attrs"
     :loading="loading"
     @click="handleClick"
   >
     <slot></slot>
-  </el-button>
+  </a-button>
 </template>
 
-<script lang="ts">
-export default {
-  name: 'async-button',
-}
-</script>
-
 <script setup lang="ts">
-import { ElButton } from 'element-plus'
 import { useRef } from '@/hooks/useRef'
 
 const props = defineProps<{ api: () => Promise<any>; onSuccess?: () => any }>()

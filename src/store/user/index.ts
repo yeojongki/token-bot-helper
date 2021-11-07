@@ -4,7 +4,7 @@ import { WBNB_TOKEN } from '@/constants/tokens'
 import { TokenWithPrice } from '../tokens'
 import { getFromStorage, setToStorage } from '@/utils/storage'
 import { providers, Wallet } from 'ethers'
-import { ElMessage } from 'element-plus'
+import { message } from 'ant-design-vue'
 import request from '@/utils/request'
 import { defaultRpc } from '@/constants'
 import { userNamespace as namespace } from '@/constants/namespace'
@@ -106,7 +106,7 @@ export const useUserStore = defineStore({
         params: [],
         jsonrpc: '2.0',
       })
-      ElMessage.success(`当前节点延迟: ${+new Date() - start}ms`)
+      message.success(`当前节点延迟: ${+new Date() - start}ms`)
     },
     /**
      * 设置私钥
