@@ -71,6 +71,7 @@
       data-index="income"
       :sorter="(a:any, b:any) => sorter(a, b, 'income')"
       title="收益"
+      :default-sort-order="isWorking ? 'descend' : ''"
     >
       <template #default="{ record }">
         <div class="price-row">
