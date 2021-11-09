@@ -8,7 +8,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/bnx',
-    redirect: '/bnx/working'
+    redirect: '/bnx/working',
   },
   {
     path: '/bnx/working',
@@ -17,6 +17,10 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/bnx/marketing',
     component: () => import('@/views/Bnx/Marketing.vue'),
+  },
+  {
+    path: '/armz',
+    component: () => import('@/views/ArmzLegend/index.vue'),
   },
 ]
 
