@@ -24,6 +24,8 @@ export default [
     ],
     name: 'Approval',
     type: 'event',
+    signature:
+      '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925',
   },
   {
     anonymous: false,
@@ -44,6 +46,8 @@ export default [
     ],
     name: 'ApprovalForAll',
     type: 'event',
+    signature:
+      '0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31',
   },
   {
     anonymous: false,
@@ -63,6 +67,8 @@ export default [
     ],
     name: 'OwnershipTransferred',
     type: 'event',
+    signature:
+      '0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0',
   },
   {
     anonymous: false,
@@ -78,6 +84,8 @@ export default [
     ],
     name: 'Transfer',
     type: 'event',
+    signature:
+      '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
   },
   {
     inputs: [{ internalType: 'address', name: '_address', type: 'address' }],
@@ -85,6 +93,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x35b28153',
   },
   {
     inputs: [
@@ -95,6 +104,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x095ea7b3',
   },
   {
     inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
@@ -112,6 +122,8 @@ export default [
     ],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0xfc2f96a9',
   },
   {
     inputs: [{ internalType: 'address', name: 'owner', type: 'address' }],
@@ -119,6 +131,8 @@ export default [
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x70a08231',
   },
   {
     inputs: [
@@ -133,6 +147,7 @@ export default [
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x32c91621',
   },
   {
     inputs: [],
@@ -140,6 +155,8 @@ export default [
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x966dae0e',
   },
   {
     inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
@@ -147,6 +164,8 @@ export default [
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x081812fc',
   },
   {
     inputs: [{ internalType: 'uint256', name: 'id', type: 'uint256' }],
@@ -171,6 +190,8 @@ export default [
     ],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x57d50e96',
   },
   {
     inputs: [{ internalType: 'address', name: '_owner', type: 'address' }],
@@ -178,6 +199,8 @@ export default [
     outputs: [{ internalType: 'uint256[]', name: '', type: 'uint256[]' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0xe40de887',
   },
   {
     inputs: [
@@ -188,6 +211,8 @@ export default [
     outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0xe985e9c5',
   },
   {
     inputs: [],
@@ -195,6 +220,8 @@ export default [
     outputs: [{ internalType: 'string', name: '', type: 'string' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x06fdde03',
   },
   {
     inputs: [],
@@ -202,6 +229,8 @@ export default [
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x8da5cb5b',
   },
   {
     inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
@@ -209,6 +238,8 @@ export default [
     outputs: [{ internalType: 'address', name: '', type: 'address' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x6352211e',
   },
   {
     inputs: [],
@@ -216,6 +247,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x715018a6',
   },
   {
     inputs: [
@@ -227,6 +259,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x42842e0e',
   },
   {
     inputs: [
@@ -239,6 +272,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0xb88d4fde',
   },
   {
     inputs: [
@@ -249,6 +283,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0xa22cb465',
   },
   {
     inputs: [{ internalType: 'address', name: '_new', type: 'address' }],
@@ -256,6 +291,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x83c17c55',
   },
   {
     inputs: [{ internalType: 'bytes4', name: 'interfaceId', type: 'bytes4' }],
@@ -263,6 +299,8 @@ export default [
     outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x01ffc9a7',
   },
   {
     inputs: [],
@@ -270,6 +308,8 @@ export default [
     outputs: [{ internalType: 'string', name: '', type: 'string' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x95d89b41',
   },
   {
     inputs: [{ internalType: 'uint256', name: 'index', type: 'uint256' }],
@@ -277,6 +317,8 @@ export default [
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x4f6ccce7',
   },
   {
     inputs: [
@@ -287,6 +329,8 @@ export default [
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x2f745c59',
   },
   {
     inputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
@@ -294,6 +338,8 @@ export default [
     outputs: [{ internalType: 'string', name: '', type: 'string' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0xc87b56dd',
   },
   {
     inputs: [],
@@ -301,6 +347,8 @@ export default [
     outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
     stateMutability: 'view',
     type: 'function',
+    constant: true,
+    signature: '0x18160ddd',
   },
   {
     inputs: [
@@ -312,6 +360,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x23b872dd',
   },
   {
     inputs: [{ internalType: 'address', name: 'newOwner', type: 'address' }],
@@ -319,6 +368,7 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0xf2fde38b',
   },
   {
     inputs: [
@@ -343,5 +393,6 @@ export default [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+    signature: '0x56de0cf6',
   },
 ]
