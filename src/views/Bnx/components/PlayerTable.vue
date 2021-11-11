@@ -248,27 +248,31 @@
 </template>
 
 <script setup lang="ts">
-import { PropType, ref } from 'vue'
-import type { TableProps } from 'ant-design-vue'
+import { ref } from 'vue'
 import { useBnxStore } from '@/store/bnx'
 import copyText from '@/utils/copyText'
 import { contractAddress, getUpgradeCostBnx } from '../common'
 import type { Hero, ActionType } from '../common'
+import { TableProps } from 'ant-design-vue/lib/table/interface'
 
-const props = defineProps({
-  api: {
-    type: Function as PropType<() => Promise<any>>,
-    required: true,
+const props = withDefaults(
+  defineProps<{
+    api: () => Promise<any>
+    onSelectionChange?: (selectedRows: any[]) => void
+    height?: number
+    hideLoading?: boolean
+    isNoWorking?: boolean
+    isWorking?: boolean
+    isMarketing?: boolean
+    /**
+     * 在 setup 时初始化数据
+     */
+    initDataOnSetup?: boolean
+  }>(),
+  {
+    initDataOnSetup: true,
   },
-  onSelectionChange: {
-    type: Function as PropType<(selectedRows: any[]) => void>,
-  },
-  hideLoading: Boolean,
-  height: Number,
-  isNoWorking: Boolean,
-  isWorking: Boolean,
-  isMarketing: Boolean,
-})
+)
 
 const dataSource = ref([])
 const loading = ref(false)
@@ -357,13 +361,15 @@ const rowSelection: TableProps['rowSelection'] = {
   },
 }
 
-// 没有 bnx gold 价格的时候先去请求
-if (bnxStore.bnxPrice == 0) {
-  bnxStore.updateBnxAndGold().then(() => {
+if (props.initDataOnSetup) {
+  // 没有 bnx gold 价格的时候先去请求
+  if (bnxStore.bnxPrice == 0) {
+    bnxStore.updateBnxAndGold().then(() => {
+      getList()
+    })
+  } else {
     getList()
-  })
-} else {
-  getList()
+  }
 }
 </script>
 

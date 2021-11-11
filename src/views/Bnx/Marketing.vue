@@ -104,6 +104,17 @@
           </a-select>
         </a-form-item>
 
+        <a-form-item label="品质">
+          <a-select v-model:value="searchParams.props">
+            <a-select-option value="">全部</a-select-option>
+            <a-select-option value="1">传奇</a-select-option>
+            <a-select-option value="2">史诗</a-select-option>
+            <a-select-option value="3">精英</a-select-option>
+            <a-select-option value="4">优秀</a-select-option>
+            <a-select-option value="5">普通</a-select-option>
+          </a-select>
+        </a-form-item>
+
         <a-form-item label="角色">
           <a-select v-model:value="searchParams.career">
             <a-select-option value="">全部</a-select-option>
@@ -156,8 +167,9 @@
 
     <!-- 市场列表表格 -->
     <player-table
-      :hide-loading="true"
       ref="actionRef"
+      :init-data-on-setup="false"
+      :hide-loading="true"
       :api="getList"
       :is-marketing="true"
       :on-selectionChange="selectionChange"
@@ -211,7 +223,7 @@ const actionRef = ref(undefined as ActionType | undefined)
 /**
  * 请求列表间隔
  */
-const getListInterval = ref(2500)
+const getListInterval = ref(2000)
 
 /**
  * true 开启
@@ -274,6 +286,7 @@ const searchParams = reactive({
   sort: 'time',
   career: '',
   page_size: 77,
+  props: '',
   ...router.currentRoute.value.query,
   ...(storageSearchParams
     ? JSON.parse(storageSearchParams)
@@ -288,6 +301,44 @@ function selectionChange(val: WorkingHero[]) {
 }
 
 /**
+ * 获取搜索属性
+ * 全部"" "" / 传奇 401-0 / 史诗 371-400 / 精英 321-370 / 优秀 251-320 / 普通 0-250
+ */
+function _getSearchStartEndValue(props: string) {
+  if (props === '1') {
+    return {
+      start_value: '',
+      end_value: '',
+    }
+  } else if (props === '2') {
+    return {
+      start_value: '',
+      end_value: '',
+    }
+  } else if (props === '3') {
+    return {
+      start_value: '',
+      end_value: '',
+    }
+  } else if (props === '4') {
+    return {
+      start_value: '',
+      end_value: '',
+    }
+  } else if (props === '5') {
+    return {
+      start_value: '',
+      end_value: '',
+    }
+  }
+
+  return {
+    start_value: '',
+    end_value: '',
+  }
+}
+
+/**
  * 获取市场列表
  */
 async function getList(page = 1) {
@@ -295,6 +346,7 @@ async function getList(page = 1) {
     const params = {
       page,
       ...searchParams,
+      ..._getSearchStartEndValue(searchParams.props),
     }
 
     const { code, data } = await get(apiUrl, params)
@@ -469,10 +521,12 @@ async function buySelected() {
  */
 async function buyPlayer(orderId: string, price: number) {
   const msg = `正在购买 ${orderId}, 价格为${price}`
-  const buyingMsg = message({
-    type: 'info',
+
+  const messageKey = 'buyPlayer'
+  message.loading({
     duration: 0,
-    message: msg,
+    content: msg,
+    key: messageKey,
   })
   try {
     const tx = await saleContractNew.buyPlayer(orderId, {
@@ -485,14 +539,18 @@ async function buyPlayer(orderId: string, price: number) {
 
     console.log(`https://www.binaryx.pro/#/oneoffsale/detail/${orderId}`)
 
-    message.success(`购买成功 ${orderId}, 价格为${price}`)
+    message.success({
+      key: messageKey,
+      content: `购买成功 ${orderId}, 价格为${price}`,
+    })
     // 刷新 bnx 余额
     bnxStore.updateBnxAndGoldBalance()
   } catch (error) {
-    message.error(`已被购买或发生错误`)
+    message.error({
+      key: messageKey,
+      content: `已被购买或发生错误`,
+    })
     console.error(error)
-  } finally {
-    buyingMsg.close()
   }
 }
 
@@ -530,13 +588,13 @@ let pollList = promisePoll(
   getListInterval.value,
 )
 
-// effect(() => {
-//   if (watchOpened.value) {
-//     pollList.start()
-//   } else {
-//     pollList.stop()
-//   }
-// })
+effect(() => {
+  if (watchOpened.value) {
+    pollList.start()
+  } else {
+    pollList.stop()
+  }
+})
 
 // 卸载移除轮训定时器
 onUnmounted(() => {
