@@ -17,6 +17,7 @@
       >
     </div>
     <a-table
+      row-key="id"
       :rowSelection="rowSelection"
       :bordered="true"
       :pagination="false"
@@ -49,11 +50,10 @@ import { ref } from 'vue'
 import { message, TableProps } from 'ant-design-vue'
 import { useNonceStore } from '@/store/nonce'
 import { TX_QUEUE_MAXIMUM } from '@/constants'
-import T from 'ant-design-vue/lib/table'
 
 const { wallet } = useActiveProvider()
 const armzAddress = '0x3d7b0001e03096d3795Fd5D984AD679467546d73'
-const fightAddress = '0xc0EdE49FfEa93caBA0f508B33db37a42e0ef3e9F'
+const fightAddress = '0x65261f17743fd5fE74c69d03147A1F21F7658db6'
 const stakingAddress = '0x40570901a83172Ff790108255E58423CD01B00aE'
 const poolAddress = '0xe4dd4794C915CB99f5A12cA8058d8B45fFEa8545'
 
@@ -69,7 +69,7 @@ const selectedRows = ref([] as any[])
 const rowSelection: TableProps['rowSelection'] = {
   getCheckboxProps(record: any) {
     return {
-      disabled: Number(record.mana) === 0,
+      // disabled: Number(record.mana) === 0,
     }
   },
   onChange: (_: string[], rows: any[]) => {
@@ -87,7 +87,7 @@ const getList = async () => {
       armzContract
         .tokenOfOwnerByIndex(wallet.address, i)
         .then((res: any) => {
-          armzContract.getArmz(res).then((r: any) => resolve(r))
+          armzContract.getArmz(res).then(resolve)
         })
         .catch((err: any) => reject(err))
     })
@@ -127,7 +127,7 @@ const batchFight = () => {
       // 最大交易为64
       const promises = selectedRows.value
         // 过滤没能量的
-        .filter(item => Number(item.mana) !== 0)
+        // .filter(item => Number(item.mana) !== 0)
         .slice(0, TX_QUEUE_MAXIMUM)
         .map(
           (item, index) =>
