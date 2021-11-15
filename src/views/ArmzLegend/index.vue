@@ -53,7 +53,7 @@ import { TX_QUEUE_MAXIMUM } from '@/constants'
 
 const { wallet } = useActiveProvider()
 const armzAddress = '0x3d7b0001e03096d3795Fd5D984AD679467546d73'
-const fightAddress = '0x65261f17743fd5fE74c69d03147A1F21F7658db6'
+const fightAddress = '0x17D4dc90B06Ef4e88911Df63D860a7B5ced5997c'
 const stakingAddress = '0x40570901a83172Ff790108255E58423CD01B00aE'
 const poolAddress = '0xe4dd4794C915CB99f5A12cA8058d8B45fFEa8545'
 
