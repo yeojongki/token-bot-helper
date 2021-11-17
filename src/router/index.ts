@@ -22,6 +22,10 @@ const routes: RouteRecordRaw[] = [
     path: '/armz',
     component: () => import('@/views/ArmzLegend/index.vue'),
   },
+  {
+    path: '/raca',
+    component: () => import('@/views/Raca/index.vue'),
+  },
 ]
 
 const router = createRouter({
