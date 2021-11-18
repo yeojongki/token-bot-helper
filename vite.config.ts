@@ -8,15 +8,20 @@ import ViteComponents, {
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // server: {
-  //   proxy: {
-  //     '/bnxApi': {
-  //       target: 'https://www.binaryx.pro',
-  //       changeOrigin: true,
-  //       rewrite: (path) => path.replace(/^\/bnxApi/, ''),
-  //     },
-  //   },
-  // },
+  server: {
+    proxy: {
+      metamon: {
+        target: 'https://metamon-api.radiocaca.com/usm-api',
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/metamon/, ''),
+      },
+      //     '/bnxApi': {
+      //       target: 'https://www.binaryx.pro',
+      //       changeOrigin: true,
+      //       rewrite: (path) => path.replace(/^\/bnxApi/, ''),
+      //     },
+    },
+  },
   plugins: [
     vue(),
     Components({
