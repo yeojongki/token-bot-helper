@@ -10,7 +10,7 @@
         v-model:value="bossLevel"
       ></a-input-number>
       <async-button
-        :api="batchFight"
+        :api="fightRecursion"
         :disabled="!selectedRows.length"
         type="primary"
         >批量挑战boss</async-button
@@ -111,6 +111,57 @@ const getRewardsInfo = async () => {
   }
 
   return rewardInfos
+}
+
+const fightRecursion = async (index = 0, total = 0) => {
+  const helper = (id: number) => {
+    return new Promise<{ isWin: boolean; rewards: string }>(
+      (resolve, reject) => {
+        fightContract
+          .fight(`${id}`, bossLevel.value)
+          .then((tx: any) => tx.wait())
+          .then((r: any) => {
+            const event = r.events[0].args
+            const isWin = event[0]
+            const rewards = utils.formatEther(event[1])
+            console.log({ isWin, rewards })
+            resolve({ isWin, rewards })
+          })
+          .catch((err: any) => {
+            reject(err)
+          })
+      },
+    )
+  }
+
+  const messageKey = 'batchFight'
+  message.loading({
+    content: '批量掰手腕中, 请勿发生交易操作',
+    duration: 0,
+    key: messageKey,
+  })
+
+  if (selectedRows.value[index]) {
+    const { id } = selectedRows.value[index]
+    const { isWin, rewards } = await helper(id)
+    total += Number(rewards)
+    index++
+    if (isWin) {
+      console.log(`#${id} 掰手腕赢了, 奖励 ${rewards}`)
+    } else {
+      console.log(`#${id} 掰手腕输了`)
+    }
+
+    return fightRecursion(index, total)
+  } else {
+    const msg = `完成批量掰手腕 共获得 ${total} prot`
+    console.log(msg)
+    message.success({
+      duration: 1.5,
+      content: msg,
+      key: messageKey,
+    })
+  }
 }
 
 const batchFight = () => {
