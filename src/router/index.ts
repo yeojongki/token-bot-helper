@@ -26,6 +26,10 @@ const routes: RouteRecordRaw[] = [
     path: '/raca',
     component: () => import('@/views/Raca/index.vue'),
   },
+  {
+    path: '/racaf',
+    component: () => import('@/views/Raca/fight.vue'),
+  },
 ]
 
 const router = createRouter({
