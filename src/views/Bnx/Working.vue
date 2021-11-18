@@ -26,7 +26,7 @@
       <div class="flex items-center">
         <div>批量获取受益最低值 (0为不限制):</div>
         <a-input-number
-          v-model="batcGetAwardsMin"
+          v-model:value="batcGetAwardsMin"
           class="ml-10 mr-10"
         ></a-input-number>
       </div>
@@ -88,7 +88,7 @@
       <!-- <div>批量拍卖价格：</div> -->
       <a-input-number
         :min="0"
-        v-model="batchAuctionPrice"
+        v-model:value="batchAuctionPrice"
         class="mr-10 flex-1"
       ></a-input-number>
       <async-button
@@ -119,7 +119,7 @@
   <a-card class="page-bnx" header="工具">
     <div class="flex">
       <!-- <a-input-number
-        v-model="batchNewPlayerCount"
+        v-model:value="batchNewPlayerCount"
         :step="1"
         placeholder="请输入批量抽卡数量"
         class="mr-10"
@@ -183,7 +183,7 @@ const transferTo = ref('0x055Ea612D6a422Bb6CA20722b570B9E33227858E')
 /**
  * 批量拍卖价格
  */
-const batchAuctionPrice = ref(0.42)
+const batchAuctionPrice = ref(0.4)
 
 /**
  * 当前收益 / 每日收益 $
