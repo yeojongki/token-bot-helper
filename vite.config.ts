@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 import Components from 'unplugin-vue-components/vite'
 import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
+import vueJsx from '@vitejs/plugin-vue-jsx'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -21,6 +22,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
+    vueJsx({}),
     vue(),
     Components({
       dts: true,

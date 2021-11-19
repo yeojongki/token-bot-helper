@@ -1,26 +1,47 @@
 <template>
-  <a-row class="card-list" justify="center">
-    <a-card
-      v-for="item in monsterList"
-      class="card-item"
-      @click="fight(item.id)"
-    >
-      <template #title>
-        <div>lv.{{ item.level }}: {{ item.sca }}</div>
-      </template>
-
+  <!-- <a-row class="card-list" justify="center">
+    <div class="flex" v-for="item in monsterList" @click="fight(item.id)">
       <img class="item-img" :src="item.imageUrl" />
-    </a-card>
-  </a-row>
+      <div>
+        <div>lv.{{ item.level }}: {{ item.sca }}</div>
+      </div>
+    </div>
+  </a-row> -->
+
+  <div class="p-15">
+    <a-table
+      class="mb-20"
+      row-key="id"
+      :loading="monsterListLoading"
+      :bordered="true"
+      :pagination="false"
+      :data-source="[myMonster]"
+      :columns="monsterColumns"
+    >
+    </a-table>
+
+    <a-table
+      row-key="id"
+      :loading="monsterListLoading"
+      :bordered="true"
+      :pagination="false"
+      :data-source="monsterList"
+      :columns="battleListColumns"
+    >
+    </a-table>
+  </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="tsx">
 import { formPost } from '@/utils/request'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { useRef } from '@/hooks/useRef'
-import { RACA_SIGN_KEY } from '@/constants/storageKey'
-import { message, Modal, notification } from 'ant-design-vue'
+import { RACA_SIGN_KEY, RACA_TOKEN_KEY } from '@/constants/storageKey'
+import { Button, message, notification } from 'ant-design-vue'
 
+/**
+ * 元兽
+ */
 interface Monster {
   con: number
   conMax: number
@@ -61,12 +82,91 @@ interface Monster {
 const { account, wallet } = useActiveProvider()
 
 const [sign, setSign] = useRef(localStorage.getItem(RACA_SIGN_KEY) || '')
-const [token, setToken] = useRef('')
+const [token, setToken] = useRef(localStorage.getItem(RACA_TOKEN_KEY) || '')
+
+/**
+ * 我的当前元兽
+ */
 const [myMonster, setMyMonster] = useRef({} as Monster)
+
+/**
+ * 元兽对战列表
+ */
 const [monsterList, setMonsterList] = useRef([] as Monster[])
 
-const signMessage = 'LogIn'
+/**
+ * 元兽对战列表 loading
+ */
+const [monsterListLoading, setMonsterListLoading] = useRef(false)
+
+/**
+ * 元兽对战表格列
+ */
+const monsterColumns = [
+  {
+    title: 'id',
+    dataIndex: 'id',
+  },
+  {
+    title: '等级',
+    dataIndex: 'level',
+  },
+  {
+    title: '经验',
+    dataIndex: 'exp',
+  },
+  {
+    title: '能否升级',
+    dataIndex: 'monsterUpdate',
+    customRender({ text }: { text: boolean }) {
+      return text ? '✅' : '❌'
+    },
+  },
+  {
+    title: '品质',
+    dataIndex: 'rarity',
+  },
+  {
+    title: '总属性',
+    dataIndex: 'sca',
+  },
+  {
+    title: '图片',
+    dataIndex: 'imageUrl',
+    customRender({ text }: any) {
+      return <img class="item-img" src={text} />
+    },
+  },
+]
+
+/**
+ * 对战表格列
+ */
+const battleListColumns = monsterColumns.concat([
+  {
+    title: '操作',
+    dataIndex: 'action',
+    customRender({ record }: { record: Monster }) {
+      return (
+        <Button type="primary" onClick={() => fight(record.id)}>
+          battle
+        </Button>
+      )
+    },
+  },
+])
+
+/**
+ * 登录
+ */
 const login = async () => {
+  // 读缓存中的
+  if (token.value && sign.value) {
+    return true
+  }
+
+  // 走网络请求
+  const signMessage = 'LogIn'
   const msgKey = 'login'
   message.loading({
     key: msgKey,
@@ -75,6 +175,7 @@ const login = async () => {
   })
   if (!sign.value) {
     const res = await wallet.signMessage(signMessage)
+    // 保存 sign key
     setSign(res)
     localStorage.setItem(RACA_SIGN_KEY, res)
   }
@@ -89,7 +190,10 @@ const login = async () => {
   )
 
   if (code === 'SUCCESS') {
+    // 保存 token
     setToken(data)
+    localStorage.setItem(RACA_TOKEN_KEY, data)
+
     message.success({
       key: msgKey,
       duration: 1,
@@ -102,6 +206,9 @@ const login = async () => {
   }
 }
 
+/**
+ * 获取当前的元兽
+ */
 const getSelfMonster = async () => {
   const { code, data } = await formPost<{
     code: string
@@ -123,6 +230,9 @@ const getSelfMonster = async () => {
   }
 }
 
+/**
+ * 获取对战列表
+ */
 const getMonsters = async () => {
   const { code, data } = await formPost<{
     code: string
@@ -145,6 +255,9 @@ const getMonsters = async () => {
   }
 }
 
+/**
+ * 对战前支付 raca
+ */
 const startPay = async (monsterB: number) => {
   const { code, data } = await formPost<{
     code: string
@@ -167,6 +280,9 @@ const startPay = async (monsterB: number) => {
   }
 }
 
+/**
+ * 元兽对战
+ */
 const fight = async (monsterB: number) => {
   await startPay(monsterB)
 
@@ -202,6 +318,32 @@ const fight = async (monsterB: number) => {
   }
 }
 
+/**
+ * 元兽升级
+ */
+const updateMonster = async (nftId: number) => {
+  const { code } = await formPost<{
+    code: string
+  }>(
+    '/metamon/updateMonster',
+    {
+      nftId,
+      address: account,
+    },
+    { accesstoken: token.value },
+  )
+  if (code === 'SUCCESS') {
+    message.success({
+      duration: 1.5,
+      content: '升级成功',
+    })
+  } else {
+    notification.error({
+      message: '升级失败',
+    })
+  }
+}
+
 const initData = async () => {
   await login()
   await getSelfMonster()
@@ -210,3 +352,10 @@ const initData = async () => {
 
 initData()
 </script>
+
+<style>
+.item-img {
+  width: 80px;
+  height: 80px;
+}
+</style>
