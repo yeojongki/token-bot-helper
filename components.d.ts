@@ -4,6 +4,7 @@
 
 declare module 'vue' {
   export interface GlobalComponents {
+    AAvatar: typeof import('ant-design-vue/es')['Avatar']
     AButton: typeof import('ant-design-vue/es')['Button']
     ACard: typeof import('ant-design-vue/es')['Card']
     ACol: typeof import('ant-design-vue/es')['Col']
@@ -12,6 +13,9 @@ declare module 'vue' {
     AFormItem: typeof import('ant-design-vue/es')['FormItem']
     AInput: typeof import('ant-design-vue/es')['Input']
     AInputNumber: typeof import('ant-design-vue/es')['InputNumber']
+    AList: typeof import('ant-design-vue/es')['List']
+    AListItem: typeof import('ant-design-vue/es')['ListItem']
+    AListItemMeta: typeof import('ant-design-vue/es')['ListItemMeta']
     AMenu: typeof import('ant-design-vue/es')['Menu']
     AMenuItem: typeof import('ant-design-vue/es')['MenuItem']
     ARow: typeof import('ant-design-vue/es')['Row']

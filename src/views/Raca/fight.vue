@@ -12,6 +12,17 @@
     <a-table
       class="mb-20"
       row-key="id"
+      :loading="monsterEggLoading"
+      :bordered="true"
+      :pagination="false"
+      :data-source="monsterEggList"
+      :columns="monsterEggColumns"
+    >
+    </a-table>
+
+    <a-table
+      class="mb-20"
+      row-key="id"
       :loading="monsterListLoading"
       :bordered="true"
       :pagination="false"
@@ -33,11 +44,15 @@
 </template>
 
 <script setup lang="tsx">
-import { formPost } from '@/utils/request'
+import { formPost, get } from './request'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { useRef } from '@/hooks/useRef'
 import { RACA_SIGN_KEY, RACA_TOKEN_KEY } from '@/constants/storageKey'
 import { Button, message, notification } from 'ant-design-vue'
+import { Contract, utils } from 'ethers'
+import NFTABI from './abi/nft'
+import fixPriceSellABI from './abi/fixPriceSell'
+import { address } from './common'
 
 /**
  * 元兽
@@ -81,8 +96,30 @@ interface Monster {
 
 const { account, wallet } = useActiveProvider()
 
+const contracts = {
+  [address.METAMON_EGG_ADDRESS]: new Contract(
+    address.METAMON_EGG_ADDRESS,
+    NFTABI,
+    wallet,
+  ),
+  [address.FIX_PRICE_SELL_ADDRESS]: new Contract(
+    address.FIX_PRICE_SELL_ADDRESS,
+    fixPriceSellABI,
+    wallet,
+  ),
+}
+
 const [sign, setSign] = useRef(localStorage.getItem(RACA_SIGN_KEY) || '')
 const [token, setToken] = useRef(localStorage.getItem(RACA_TOKEN_KEY) || '')
+
+/**
+ * 元兽对战列表 loading
+ */
+const [monsterEggLoading, setMonsterEggLoading] = useRef(false)
+/**
+ * 元兽对战列表
+ */
+const [monsterEggList, setMonsterEggList] = useRef([])
 
 /**
  * 我的当前元兽
@@ -100,6 +137,26 @@ const [monsterList, setMonsterList] = useRef([] as Monster[])
 const [monsterListLoading, setMonsterListLoading] = useRef(false)
 
 /**
+ * 元兽蛋表格列
+ */
+const monsterEggColumns = [
+  {
+    title: 'id ',
+    dataIndex: 'id',
+  },
+  {
+    title: '操作',
+    dataIndex: 'action',
+    customRender({ record }: { record: Monster }) {
+      return (
+        <Button type="primary" onClick={() => onShelf(record)}>
+          上架
+        </Button>
+      )
+    },
+  },
+]
+/**
  * 元兽对战表格列
  */
 const monsterColumns = [
@@ -110,6 +167,10 @@ const monsterColumns = [
   {
     title: '等级',
     dataIndex: 'level',
+  },
+  {
+    title: '次数',
+    dataIndex: 'tear',
   },
   {
     title: '经验',
@@ -213,13 +274,9 @@ const getSelfMonster = async () => {
   const { code, data } = await formPost<{
     code: string
     data: { monster: Monster }
-  }>(
-    '/metamon/getFightMonster',
-    {
-      address: account,
-    },
-    { accesstoken: token.value },
-  )
+  }>('/metamon/getFightMonster', {
+    address: account,
+  })
 
   if (code === 'SUCCESS') {
     setMyMonster(data.monster)
@@ -234,24 +291,26 @@ const getSelfMonster = async () => {
  * 获取对战列表
  */
 const getMonsters = async () => {
-  const { code, data } = await formPost<{
-    code: string
-    data: { number: number; objects: Monster[] }
-  }>(
-    '/metamon/getBattelObjects',
-    {
+  try {
+    setMonsterListLoading(true)
+
+    const { code, data } = await formPost<{
+      code: string
+      data: { number: number; objects: Monster[] }
+    }>('/metamon/getBattelObjects', {
       address: account,
       metamonId: myMonster.value.id,
       front: 1,
-    },
-    { accesstoken: token.value },
-  )
-  if (code === 'SUCCESS') {
-    setMonsterList(data.objects)
-  } else {
-    notification.error({
-      message: '获取对战列表失败',
     })
+    if (code === 'SUCCESS') {
+      setMonsterList(data.objects)
+    } else {
+      notification.error({
+        message: '获取对战列表失败',
+      })
+    }
+  } finally {
+    setMonsterListLoading(false)
   }
 }
 
@@ -262,16 +321,12 @@ const startPay = async (monsterB: number) => {
   const { code, data } = await formPost<{
     code: string
     data: { amount: number; pay: boolean }
-  }>(
-    '/metamon/startPay',
-    {
-      monsterA: myMonster.value.id,
-      monsterB,
-      address: account,
-      battleLevel: 1,
-    },
-    { accesstoken: token.value },
-  )
+  }>('/metamon/startPay', {
+    monsterA: myMonster.value.id,
+    monsterB,
+    address: account,
+    battleLevel: 1,
+  })
 
   if (code === 'SUCCESS' && data.pay) {
     return true
@@ -289,16 +344,12 @@ const fight = async (monsterB: number) => {
   const { code, data } = await formPost<{
     code: string
     data: { challengeResult: boolean }
-  }>(
-    '/metamon/startBattle',
-    {
-      monsterA: myMonster.value.id,
-      monsterB,
-      address: account,
-      battleLevel: 1,
-    },
-    { accesstoken: token.value },
-  )
+  }>('/metamon/startBattle', {
+    monsterA: myMonster.value.id,
+    monsterB,
+    address: account,
+    battleLevel: 1,
+  })
   if (code === 'SUCCESS') {
     if (data.challengeResult) {
       message.success({
@@ -324,14 +375,10 @@ const fight = async (monsterB: number) => {
 const updateMonster = async (nftId: number) => {
   const { code } = await formPost<{
     code: string
-  }>(
-    '/metamon/updateMonster',
-    {
-      nftId,
-      address: account,
-    },
-    { accesstoken: token.value },
-  )
+  }>('/metamon/updateMonster', {
+    nftId,
+    address: account,
+  })
   if (code === 'SUCCESS') {
     message.success({
       duration: 1.5,
@@ -344,8 +391,61 @@ const updateMonster = async (nftId: number) => {
   }
 }
 
+/**
+ * 获取元兽蛋
+ */
+const getMonsterEggs = async () => {
+  try {
+    setMonsterEggLoading(true)
+    // const count = await contracts[address.METAMON_EGG_ADDRESS].balanceOf(
+    //   wallet.address,
+    //   0,
+    // )
+    // console.log(count)
+    const { code, list } = await get(
+      'https://market-api.radiocaca.com/artworks',
+      {
+        pageNo: 1,
+        pageSize: 100,
+        address: account,
+        status: 'not_on_sale',
+      },
+    )
+    if (code === 200) {
+      const eggs = list.filter(
+        (item: any) => item.nft_address === address.METAMON_EGG_ADDRESS,
+      )
+
+      eggs && eggs.length && setMonsterEggList(eggs)
+    } else {
+      notification.error({
+        message: '获取元兽蛋列表失败',
+      })
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    setMonsterEggLoading(false)
+  }
+}
+
+// TODO
+const onShelf = async (item: any) => {
+  const count = 1
+  await contracts[address.FIX_PRICE_SELL_ADDRESS].sell(
+    item.nft_address,
+    `${item.token_id}`,
+    `${count}`,
+    address.RACA_ADDRESS,
+    utils.parseEther(`${114999}`),
+    0,
+    0,
+  )
+}
+
 const initData = async () => {
   await login()
+  getMonsterEggs()
   await getSelfMonster()
   await getMonsters()
 }
