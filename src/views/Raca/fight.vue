@@ -39,6 +39,9 @@
       :data-source="monsterList"
       :columns="battleListColumns"
     >
+      <template #title>
+        <async-button :api="batchFight20">战斗20次</async-button>
+      </template>
     </a-table>
   </div>
 </template>
@@ -338,7 +341,7 @@ const startPay = async (monsterB: number) => {
 /**
  * 元兽对战
  */
-const fight = async (monsterB: number) => {
+const fight = async (monsterB: number, showMessage = true) => {
   await startPay(monsterB)
 
   const { code, data } = await formPost<{
@@ -351,21 +354,26 @@ const fight = async (monsterB: number) => {
     battleLevel: 1,
   })
   if (code === 'SUCCESS') {
-    if (data.challengeResult) {
-      message.success({
-        duration: 1.5,
-        content: '胜利',
-      })
-    } else {
-      message.error({
-        duration: 1.5,
-        content: '失败',
-      })
+    if (showMessage) {
+      if (data.challengeResult) {
+        message.success({
+          duration: 1.5,
+          content: '胜利',
+        })
+      } else {
+        message.error({
+          duration: 1.5,
+          content: '失败',
+        })
+      }
     }
+
+    return 1
   } else {
     notification.error({
       message: '获取对战列表失败',
     })
+    return 0
   }
 }
 
@@ -441,6 +449,25 @@ const onShelf = async (item: any) => {
     0,
     0,
   )
+}
+
+/**
+ * 战斗20次
+ */
+const batchFight20 = async () => {
+  const datas = await Promise.all(
+    monsterList.value.map(({ id }) => fight(id, false)),
+  )
+
+  const successCount = datas.reduce(
+    (prev: number, next: number) => prev + next,
+    0,
+  )
+
+  message.success({
+    duration: 1.5,
+    content: `成功${successCount}次, 失败${20 - successCount}次`,
+  })
 }
 
 const initData = async () => {
