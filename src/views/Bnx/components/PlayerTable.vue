@@ -252,8 +252,8 @@ import { ref } from 'vue'
 import { useBnxStore } from '@/store/bnx'
 import copyText from '@/utils/copyText'
 import { contractAddress, getUpgradeCostBnx } from '../common'
-import type { Hero, ActionType } from '../common'
-import { TableProps } from 'ant-design-vue/lib/table/interface'
+import type { Hero } from '../common'
+import type { TableProps } from 'ant-design-vue'
 
 const props = withDefaults(
   defineProps<{

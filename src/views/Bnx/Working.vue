@@ -54,6 +54,7 @@
     sum-text="合计"
     :summary-method="getIncomeSummaries"-->
     <player-table
+      ref="workingTableRef"
       :api="getWorkingPlayers"
       :is-working="true"
       :on-selection-change="workingSelectionChange"
