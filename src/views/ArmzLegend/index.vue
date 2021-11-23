@@ -113,12 +113,15 @@ const getRewardsInfo = async () => {
   return rewardInfos
 }
 
-const fightRecursion = async (index = 0, total = 0) => {
+const fightRecursion = async (index = 0, total = 0): Promise<any> => {
   const helper = (id: number) => {
     return new Promise<{ isWin: boolean; rewards: string }>(
       (resolve, reject) => {
         fightContract
-          .fight(`${id}`, bossLevel.value)
+          .fight(`${id}`, bossLevel.value, {
+            gasLimit: 500000,
+            gasPrice: utils.parseUnits(`${5}`, 'gwei'),
+          })
           .then((tx: any) => tx.wait())
           .then((r: any) => {
             const event = r.events[0].args
@@ -161,6 +164,8 @@ const fightRecursion = async (index = 0, total = 0) => {
       content: msg,
       key: messageKey,
     })
+
+    return true
   }
 }
 
