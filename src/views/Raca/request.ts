@@ -36,6 +36,14 @@ export function get<T = any>(url: string, params?: RequestArgs) {
   }) as unknown as Promise<T>
 }
 
+export function post<T = any>(url: string, data?: RequestArgs) {
+  return instance({
+    url,
+    data,
+    method: 'POST',
+  }) as unknown as Promise<T>
+}
+
 export function formPost<T = any>(url: string, data: RequestArgs) {
   const postData = qs.stringify(data)
   return instance({

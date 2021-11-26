@@ -9,6 +9,16 @@
   </a-row> -->
 
   <div class="p-15">
+    <div>
+      <div v-for="item in bagList">
+        <div>
+          名称：{{ getBagItemNameByType(item.bpType) || '未知' }} / 数量：{{
+            item.bpNum
+          }}
+        </div>
+      </div>
+    </div>
+
     <a-table
       class="mb-20"
       row-key="id"
@@ -97,6 +107,24 @@ interface Monster {
   years: number
 }
 
+interface BagItem {
+  bpNum: number
+  /**
+   * 类型
+   * 1 元兽蛋碎片
+   * 2
+   * 3
+   * 4
+   * 5 raca
+   * 6 元兽蛋
+   */
+  bpType: number
+  id: number
+  owner: string
+}
+
+type RequestResultCode = 'SUCCESS' | 'FAIL'
+
 const { account, wallet } = useActiveProvider()
 
 const contracts = {
@@ -115,6 +143,25 @@ const contracts = {
 const [sign, setSign] = useRef(localStorage.getItem(RACA_SIGN_KEY) || '')
 const [token, setToken] = useRef(localStorage.getItem(RACA_TOKEN_KEY) || '')
 
+/**
+ * 背包类型 map
+ */
+const bagItemTypeMap = {
+  1: '元兽蛋碎片',
+  5: 'raca',
+  6: '元兽蛋',
+}
+
+/**
+ * 获取背包 item 名称
+ */
+const getBagItemNameByType = (type: number) =>
+  bagItemTypeMap[type as keyof typeof bagItemTypeMap]
+
+/**
+ * 背包列表
+ */
+const [bagList, setBagList] = useRef([] as BagItem[])
 /**
  * 元兽对战列表 loading
  */
@@ -212,7 +259,7 @@ const battleListColumns = monsterColumns.concat([
     dataIndex: 'action',
     customRender({ record }: { record: Monster }) {
       return (
-        <Button type="primary" onClick={() => fight(record.id)}>
+        <Button type="primary" onClick={() => fight(record.id, true)}>
           battle
         </Button>
       )
@@ -244,14 +291,14 @@ const login = async () => {
     localStorage.setItem(RACA_SIGN_KEY, res)
   }
 
-  const { code, data } = await formPost<{ code: string; data: string }>(
-    '/metamon/login',
-    {
-      address: account,
-      sign: sign.value,
-      msg: signMessage,
-    },
-  )
+  const { code, data } = await formPost<{
+    code: RequestResultCode
+    data: string
+  }>('/metamon/login', {
+    address: account,
+    sign: sign.value,
+    msg: signMessage,
+  })
 
   if (code === 'SUCCESS') {
     // 保存 token
@@ -271,11 +318,31 @@ const login = async () => {
 }
 
 /**
+ * 获取背包数据
+ */
+const checkBag = async () => {
+  const { code, data } = await formPost<{
+    code: RequestResultCode
+    data: { item: BagItem[] }
+  }>('/metamon/checkBag', {
+    address: account,
+  })
+
+  if (code === 'SUCCESS') {
+    setBagList((data.item || []).filter(item => item.bpNum > 0))
+  } else {
+    notification.error({
+      message: '获取背包数据失败',
+    })
+  }
+}
+
+/**
  * 获取当前的元兽
  */
 const getSelfMonster = async () => {
   const { code, data } = await formPost<{
-    code: string
+    code: RequestResultCode
     data: { monster: Monster }
   }>('/metamon/getFightMonster', {
     address: account,
@@ -298,7 +365,7 @@ const getMonsters = async () => {
     setMonsterListLoading(true)
 
     const { code, data } = await formPost<{
-      code: string
+      code: RequestResultCode
       data: { number: number; objects: Monster[] }
     }>('/metamon/getBattelObjects', {
       address: account,
@@ -322,7 +389,7 @@ const getMonsters = async () => {
  */
 const startPay = async (monsterB: number) => {
   const { code, data } = await formPost<{
-    code: string
+    code: RequestResultCode
     data: { amount: number; pay: boolean }
   }>('/metamon/startPay', {
     monsterA: myMonster.value.id,
@@ -345,7 +412,7 @@ const fight = async (monsterB: number, showMessage = true) => {
   await startPay(monsterB)
 
   const { code, data } = await formPost<{
-    code: string
+    code: RequestResultCode
     data: { challengeResult: boolean }
   }>('/metamon/startBattle', {
     monsterA: myMonster.value.id,
@@ -368,10 +435,10 @@ const fight = async (monsterB: number, showMessage = true) => {
       }
     }
 
-    return 1
+    return data.challengeResult ? 1 : 0
   } else {
     notification.error({
-      message: '获取对战列表失败',
+      message: '对战失败',
     })
     return 0
   }
@@ -382,7 +449,7 @@ const fight = async (monsterB: number, showMessage = true) => {
  */
 const updateMonster = async (nftId: number) => {
   const { code } = await formPost<{
-    code: string
+    code: RequestResultCode
   }>('/metamon/updateMonster', {
     nftId,
     address: account,
@@ -410,6 +477,13 @@ const getMonsterEggs = async () => {
     //   0,
     // )
     // console.log(count)
+
+    // contracts[address.METAMON_EGG_ADDRESS]
+    //   .balanceOf(wallet.address, 0)
+    //   .then((count: number) => {
+    //     console.log({ count })
+    //   })
+
     const { code, list } = await get(
       'https://market-api.radiocaca.com/artworks',
       {
@@ -464,14 +538,15 @@ const batchFight20 = async () => {
     0,
   )
 
-  message.success({
-    duration: 1.5,
-    content: `成功${successCount}次, 失败${20 - successCount}次`,
+  notification.success({
+    duration: null,
+    message: `成功${successCount}次, 失败${20 - successCount}次`,
   })
 }
 
 const initData = async () => {
   await login()
+  checkBag()
   getMonsterEggs()
   await getSelfMonster()
   await getMonsters()
