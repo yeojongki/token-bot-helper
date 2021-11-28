@@ -36,7 +36,7 @@
               {{
                 element.address === WBNB_TOKEN.address
                   ? tokensStore.ethPrice
-                  : formatTokenPrice(element)
+                  : formatTokenPrice(element, tokensStore.ethPrice)
               }}
             </div>
           </div>
@@ -129,11 +129,25 @@ const onAddToken = async () => {
 /**
  * 格式化 token 价格 (限制长度)
  */
-const formatTokenPrice = (token: TokenWithPrice, emptyPrice = '-') => {
-  const { price } = token
+const formatTokenPrice = (
+  token: TokenWithPrice,
+  ethPrice: number,
+  emptyPrice = '-',
+) => {
+  const { price, poolType } = token
   if (!price) return emptyPrice
 
-  return String(price).slice(0, 12)
+  let actuallyPrice = Number(price)
+  switch (poolType) {
+    case PoolType.BNB:
+      actuallyPrice *= ethPrice
+      break
+
+    default:
+      break
+  }
+
+  return String(actuallyPrice).slice(0, 12)
 }
 
 /**
