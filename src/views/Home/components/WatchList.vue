@@ -1,13 +1,25 @@
 <template>
-  <div class="flex">
-    <a-input v-model="addTokenAddress" class="mr-10"></a-input>
-    <async-button
-      :api="onAddToken"
-      class="ml-15"
-      type="primary"
-      :disabled="!addTokenAddress.length"
-    >新增</async-button>
-  </div>
+  <a-form-item label="请选择池子类型">
+    <a-select class="w-full" v-model:value="addTokenPoolType">
+      <a-select-option :value="PoolType.UNKNOWN">未知</a-select-option>
+      <a-select-option :value="PoolType.BNB">BNB</a-select-option>
+      <a-select-option :value="PoolType.BUSD">BUSD</a-select-option>
+      <a-select-option :value="PoolType.USDT">USDT</a-select-option>
+    </a-select>
+  </a-form-item>
+  <a-form-item label="请输入合约地址" class="flex">
+    <div class="flex">
+      <a-input v-model:value="addTokenAddress" class="mr-10"></a-input>
+
+      <async-button
+        :api="onAddToken"
+        class="ml-15"
+        type="primary"
+        :disabled="!addTokenAddress.length"
+        >新增</async-button
+      >
+    </div>
+  </a-form-item>
 
   <draggable
     class="token-list"
@@ -24,11 +36,7 @@
               {{
                 element.address === WBNB_TOKEN.address
                   ? tokensStore.ethPrice
-                  : formatTokenPrice(
-                    element.price
-                      ? tokensStore.ethPrice * Number(element.price)
-                      : null,
-                  )
+                  : formatTokenPrice(element)
               }}
             </div>
           </div>
@@ -36,14 +44,15 @@
             <a-button
               size="small"
               :danger="element.skipWatch ? true : false"
-              :type="element.skipWatch ? 'default' : undefined"
+              :type="element.skipWatch ? 'default' : 'primary'"
               @click="
                 userStore.toggleSkipWatchToken({
                   chainId: element.chainId,
                   address: element.address,
                 })
               "
-            >{{ element.skipWatch ? '暂停中' : '观察中' }}</a-button>
+              >{{ element.skipWatch ? '暂停中' : '观察中' }}</a-button
+            >
             <a-dropdown-button size="small" class="ml-10">
               更多
               <template #overlay>
@@ -54,7 +63,8 @@
                       chainId: element.chainId,
                       address: element.address,
                     }"
-                  >复制地址</a-menu-item>
+                    >复制地址</a-menu-item
+                  >
                   <a-menu-item
                     divided
                     :command="{
@@ -62,7 +72,8 @@
                       chainId: element.chainId,
                       address: element.address,
                     }"
-                  >删除</a-menu-item>
+                    >删除</a-menu-item
+                  >
                 </a-menu>
               </template>
             </a-dropdown-button>
@@ -75,10 +86,11 @@
 
 <script lang="ts" setup>
 import draggable from 'vuedraggable'
+import { PoolType } from '@/constants'
 import { WBNB_TOKEN } from '@/constants/tokens'
 import { useUserStore } from '@/store/user'
 import AsyncButton from '@/components/AsyncButton/index.vue'
-import { useTokensStore } from '@/store/tokens'
+import { TokenPoolType, TokenWithPrice, useTokensStore } from '@/store/tokens'
 import { useRef } from '@/hooks/useRef'
 import copyText from '@/utils/copyText'
 
@@ -100,13 +112,15 @@ const tokensStore = useTokensStore()
 const userStore = useUserStore()
 const [addTokenAddress, setAddTokenAddress] = useRef('')
 
+const [addTokenPoolType] = useRef('' as TokenPoolType)
+
 /**
  * 新增 token
  */
 const onAddToken = async () => {
   const token = await tokensStore.getTokenDetail(addTokenAddress.value)
   if (token) {
-    userStore.addToken(token)
+    userStore.addToken(token, addTokenPoolType.value)
     // reset empty
     setAddTokenAddress('')
   }
@@ -115,8 +129,10 @@ const onAddToken = async () => {
 /**
  * 格式化 token 价格 (限制长度)
  */
-const formatTokenPrice = (price?: unknown) => {
-  if (!price) return '-'
+const formatTokenPrice = (token: TokenWithPrice, emptyPrice = '-') => {
+  const { price } = token
+  if (!price) return emptyPrice
+
   return String(price).slice(0, 12)
 }
 

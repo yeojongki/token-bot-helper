@@ -1,6 +1,6 @@
+import { PoolType } from '@/constants'
 import ERC20_ABI from '@/constants/erc20'
 import { bnxNamespace } from '@/constants/namespace'
-import { BUSD_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { getTokenPrice } from '@/utils'
 import { BigNumber } from '@ethersproject/bignumber'
@@ -69,12 +69,12 @@ export const useBnxStore = defineStore({
     updateBnxPrice() {
       return new Promise((resolve, reject) => {
         const { provider } = useActiveProvider()
-        getTokenPrice(this.bnxAddress, BUSD_TOKEN.address, provider)
-          .then((price) => {
+        getTokenPrice(PoolType.BUSD, this.bnxAddress, provider)
+          .then(price => {
             this.bnxPrice = price
             resolve(price)
           })
-          .catch((err) => {
+          .catch(err => {
             console.log(err)
             reject(err)
           })
@@ -86,12 +86,12 @@ export const useBnxStore = defineStore({
     updateGoldPrice() {
       return new Promise((resolve, reject) => {
         const { provider } = useActiveProvider()
-        getTokenPrice(this.goldAddress, BUSD_TOKEN.address, provider)
-          .then((price) => {
+        getTokenPrice(PoolType.BUSD, this.goldAddress, provider)
+          .then(price => {
             this.goldPrice = price
             resolve(price)
           })
-          .catch((err) => {
+          .catch(err => {
             console.log(err)
             reject(err)
           })

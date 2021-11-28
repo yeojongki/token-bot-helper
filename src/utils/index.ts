@@ -1,18 +1,23 @@
 import {
   AddressZero,
   BETTER_TRADE_LESS_HOPS_THRESHOLD,
+  PoolType,
   WETHTokenAddress,
 } from '@/constants'
-import { mainnetTokensAddressMap } from '@/constants/tokens'
+import {
+  BUSD_TOKEN,
+  mainnetTokensAddressMap,
+  USDT_TOKEN,
+} from '@/constants/tokens'
+import { TokenPoolType } from '@/store/tokens'
 import {
   ChainId,
   Token,
   Fetcher,
-  Route,
   Trade,
   TokenAmount,
-  TradeType,
   JSBI,
+  CurrencyAmount,
 } from '@pancakeswap/sdk'
 import { Contract, providers, Signer, utils } from 'ethers'
 import { isAddress, PollOptions } from 'ethers/lib/utils'
@@ -104,86 +109,121 @@ export function getContract(
 }
 
 /**
- * 获取 token 价格
- * @param outputTokenAddress
+ * 根据池子类型获取代币合约地址 不存在则返回 BNB 类型
+ * @param poolType
+ * @returns
+ */
+export function getTokenAddressByPoolType(poolType: TokenPoolType) {
+  switch (poolType) {
+    case PoolType.BNB:
+      return WETHTokenAddress
+    case PoolType.BUSD:
+      return BUSD_TOKEN.address
+    case PoolType.USDT:
+      return USDT_TOKEN.address
+
+    default:
+      return WETHTokenAddress
+  }
+}
+
+/**
+ * 获取交易对 token 信息
  * @param inputTokenAddress
+ * @param outputTokenAddress
  * @param provider
- * @param ethPrice
+ * @returns
+ */
+export async function fetchPairTokens(
+  inputTokenAddress: string,
+  outputTokenAddress: string,
+  provider: providers.BaseProvider,
+) {
+  let inputToken: Token | undefined = mainnetTokensAddressMap[inputTokenAddress]
+  let outputToken: Token | undefined =
+    mainnetTokensAddressMap[outputTokenAddress]
+
+  const fetchInputPromise = Fetcher.fetchTokenData(
+    ChainId.MAINNET,
+    inputTokenAddress,
+    provider,
+  )
+  const fetchOutputPromise = Fetcher.fetchTokenData(
+    ChainId.MAINNET,
+    outputTokenAddress,
+    provider,
+  )
+
+  if (!inputToken && !outputToken) {
+    const datas = await Promise.all([fetchInputPromise, fetchOutputPromise])
+    inputToken = datas[0]
+    outputToken = datas[1]
+  } else {
+    if (!inputToken) {
+      inputToken = await fetchInputPromise
+    }
+
+    if (!outputToken) {
+      outputToken = await fetchOutputPromise
+    }
+  }
+
+  return [inputToken, outputToken]
+}
+
+/**
+ * 获取 token 价格
+ * @param poolType
+ * @param outputTokenAddress
+ * @param provider
  * @returns
  */
 export async function getTokenPrice(
+  poolType: TokenPoolType,
   outputTokenAddress: string,
-  inputTokenAddress = WETHTokenAddress,
   provider: providers.BaseProvider,
 ) {
-  const targetToken: Token =
-    mainnetTokensAddressMap[outputTokenAddress] ??
-    (await Fetcher.fetchTokenData(
-      ChainId.MAINNET,
-      outputTokenAddress,
-      provider,
-    ))
+  const inputTokenAddress = getTokenAddressByPoolType(poolType)
 
-  const baseToken: Token =
-    mainnetTokensAddressMap[inputTokenAddress] ??
-    (await Fetcher.fetchTokenData(ChainId.MAINNET, inputTokenAddress, provider))
-
-  // const pair = await Fetcher.fetchPairData(targetToken, baseToken, provider)
-  // const route = new Route([pair], WETH[ChainId.MAINNET])
+  const [baseToken, targetToken] = await fetchPairTokens(
+    inputTokenAddress,
+    outputTokenAddress,
+    provider,
+  )
 
   const typedValueParsed = utils.parseUnits('1', baseToken.decimals).toString()
   const parsedAmount = new TokenAmount(baseToken, JSBI.BigInt(typedValueParsed))
   const allowedPairs = await getPairs(provider, baseToken, targetToken)
-  // const bestTradeExactIn = Trade.bestTradeExactIn(
-  //   allowedPairs,
-  //   parsedAmount,
-  //   targetToken,
-  //   { maxHops: 1, maxNumResults: 1 },
-  // )[0]
 
   // search through trades with varying hops, find best trade out of them
   let bestTradeSoFar: Trade | null = null
-  for (let i = 1; i <= 3; i++) {
-    const currentTrade: Trade | null =
+  if (poolType) {
+    bestTradeSoFar =
       Trade.bestTradeExactIn(allowedPairs, parsedAmount, targetToken, {
-        maxHops: i,
+        maxHops: 1,
         maxNumResults: 1,
       })[0] ?? null
-    // if current trade is best yet, save it
-    if (
-      isTradeBetter(
-        bestTradeSoFar,
-        currentTrade,
-        BETTER_TRADE_LESS_HOPS_THRESHOLD,
-      )
-    ) {
-      bestTradeSoFar = currentTrade
+  } else {
+    for (let i = 1; i <= 3; i++) {
+      const currentTrade: Trade | null =
+        Trade.bestTradeExactIn(allowedPairs, parsedAmount, targetToken, {
+          maxHops: i,
+          maxNumResults: 1,
+        })[0] ?? null
+      // if current trade is best yet, save it
+      if (
+        isTradeBetter(
+          bestTradeSoFar,
+          currentTrade,
+          BETTER_TRADE_LESS_HOPS_THRESHOLD,
+        )
+      ) {
+        bestTradeSoFar = currentTrade
+      }
     }
   }
 
-  // if (outputTokenAddress === '0x96Af135d3ccc996aE8935EAB6acf1471ad7a06b2') {
-  //   console.log(bestTradeSoFar)
-  //   console.log(Number(bestTradeSoFar?.executionPrice.toSignificant(6)))
-  // }
-
-  return Number(bestTradeSoFar?.executionPrice.invert().toSignificant(6))
-  // const trade = new Trade(
-  //   route,
-  //   new TokenAmount(WETH[ChainId.MAINNET], '1000000000000000000'),
-  //   TradeType.EXACT_INPUT,
-  // )
-
-  // outputTokenAddress === '0x96Af135d3ccc996aE8935EAB6acf1471ad7a06b2' &&
-  //   console.log(111, trade.executionPrice.toSignificant(6))
-
-  // const price = route.midPrice
-  // const usdtMultiple = outputTokenAddress === WETHTokenAddress ? 1 : ethPrice
-  // const invertOrNotPrice =
-  //   outputTokenAddress === WETHTokenAddress
-  //     ? price.toSignificant(6)
-  //     : price.invert().toSignificant(6)
-
-  // return Number(invertOrNotPrice) * usdtMultiple
+  return Number(bestTradeSoFar?.executionPrice?.invert().toSignificant(6))
 }
 
 export async function getBlockNumber(provider: providers.BaseProvider) {

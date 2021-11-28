@@ -35,7 +35,7 @@
       data-index="level"
       :sorter="(a:any, b:any) => sorter(a, b, 'level')"
       title="等级"
-      :width="160"
+      :width="150"
     >
       <template #default="{ record }">
         <div @click="copyRow(record)">

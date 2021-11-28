@@ -1,11 +1,6 @@
-import { WETHTokenAddress } from '@/constants'
+import { PoolType } from '@/constants'
 import ERC20_ABI from '@/constants/erc20'
-import {
-  BUSD_TOKEN,
-  mainnetTokensAddressMap,
-  USDT_TOKEN,
-  WBNB_TOKEN,
-} from '@/constants/tokens'
+import { BUSD_TOKEN, USDT_TOKEN, WBNB_TOKEN } from '@/constants/tokens'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { getTokenPrice, withPoll } from '@/utils'
 import { Contract } from '@ethersproject/contracts'
@@ -18,10 +13,17 @@ import { useUserStore } from '../user'
  */
 export type PollingTokenReturn = undefined | boolean
 
+/**
+ * 池子类型
+ */
+export type TokenPoolType = '' | 'BNB' | 'BUSD' | 'USDT'
+
 export class TokenWithPrice extends Token {
   sort?: number
   price?: string | number = 0
   skipWatch?: boolean = false
+  poolType?: TokenPoolType
+
   constructor(
     chainId: ChainId,
     address: string,
@@ -30,6 +32,10 @@ export class TokenWithPrice extends Token {
     name?: string,
     price?: string,
     projectLink?: string,
+    /**
+     * 池子类型
+     */
+    poolType?: TokenPoolType,
     /**
      * 在观察 token 列表中是否跳过更新价格
      */
@@ -43,9 +49,13 @@ export class TokenWithPrice extends Token {
     this.price = price
     this.skipWatch = skipWatch
     this.sort = sort
+    this.poolType = poolType
   }
 }
 
+/**
+ * 观察 tokens 列表
+ */
 export const useTokensStore = defineStore({
   id: 'tokens',
   state: () => ({
@@ -55,11 +65,6 @@ export const useTokensStore = defineStore({
      * 是否在
      */
     pollingReturn: undefined,
-    /**
-     * 运行时的 token 列表
-     * 作为缓存
-     */
-    runtimeTokens: new Map<string, Token>(),
   }),
   actions: {
     /**
@@ -71,8 +76,8 @@ export const useTokensStore = defineStore({
       try {
         this.loading = true
         const price = await getTokenPrice(
-          WETHTokenAddress,
-          USDT_TOKEN.address,
+          PoolType.USDT,
+          WBNB_TOKEN.address,
           provider,
         )
 
@@ -119,7 +124,7 @@ export const useTokensStore = defineStore({
       await withPoll(
         async () => {
           userStore.userAddedTokens.forEach(
-            ({ chainId, address, name, skipWatch }) => {
+            ({ chainId, address, poolType, skipWatch }) => {
               if (
                 address === WBNB_TOKEN.address ||
                 address === USDT_TOKEN.address ||
@@ -128,8 +133,8 @@ export const useTokensStore = defineStore({
                 // userStore.updateAddedToken(address, 6.4)
               } else {
                 // 跳过不需要关注的 token
-                if (provider && !skipWatch) {
-                  getTokenPrice(address, WBNB_TOKEN.address, provider)
+                if (!skipWatch) {
+                  getTokenPrice(poolType || PoolType.UNKNOWN, address, provider)
                     .then(price => {
                       userStore.updateAddedTokenPrice({
                         chainId,

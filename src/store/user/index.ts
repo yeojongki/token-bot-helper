@@ -1,7 +1,7 @@
 import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ChainId } from '@pancakeswap/sdk'
 import { WBNB_TOKEN } from '@/constants/tokens'
-import { TokenWithPrice } from '../tokens'
+import { TokenPoolType, TokenWithPrice } from '../tokens'
 import { getFromStorage, setToStorage } from '@/utils/storage'
 import { providers, Wallet } from 'ethers'
 import { message } from 'ant-design-vue'
@@ -76,7 +76,7 @@ export const useUserStore = defineStore({
     } as TokenPriceMap,
   }),
   getters: {
-    userAddedTokens: (state) => {
+    userAddedTokens: state => {
       const chainId = state.chainId
       if (!chainId) return []
       return Object.values(state.tokens?.[chainId] ?? {}).sort(
@@ -126,10 +126,12 @@ export const useUserStore = defineStore({
      * 增加 token 到用户 token 列表中
      * @param token
      */
-    addToken(token: TokenWithPrice) {
+    addToken(token: TokenWithPrice, tokenPoolType: TokenPoolType = '') {
       if (!this.tokens[token.chainId][token.address]) {
         // 设置排序
         token.sort = this.userAddedTokens.length
+        // 设置池子类型
+        token.poolType = tokenPoolType
         this.tokens[token.chainId][token.address] = token
 
         this.setTokensToStorage()
