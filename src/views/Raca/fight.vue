@@ -1,35 +1,50 @@
 <template>
-  <!-- <a-row class="card-list" justify="center">
-    <div class="flex" v-for="item in monsterList" @click="fight(item.id)">
-      <img class="item-img" :src="item.imageUrl" />
-      <div>
-        <div>lv.{{ item.level }}: {{ item.sca }}</div>
-      </div>
-    </div>
-  </a-row> -->
-
   <div class="p-15">
-    <div>
-      <div v-for="item in bagList">
-        <div>
-          名称：{{ getBagItemNameByType(item.bpType) || '未知' }} / 数量：{{
-            item.bpNum
-          }}
-        </div>
-      </div>
-    </div>
-
+    <!-- 游戏背包资产表格 -->
     <a-table
       class="mb-20"
       row-key="id"
-      :loading="monsterEggLoading"
       :bordered="true"
+      :columns="gameAssetsColumns"
       :pagination="false"
-      :data-source="monsterEggList"
-      :columns="monsterEggColumns"
+      :data-source="gameAssets"
     >
     </a-table>
 
+    <!-- 钱包资产表格 -->
+    <a-table
+      class="mb-20"
+      row-key="id"
+      :loading="walletAssetsLoading"
+      :bordered="true"
+      :pagination="false"
+      :data-source="walletAssets"
+      :columns="walletAssetsColumns"
+    >
+    </a-table>
+
+    <!-- 钱包充值到游戏弹窗 -->
+    <a-modal
+      title="充值"
+      @ok="handleDeposit(currentDepositInfo)"
+      :ok-button-props="{ loading: false }"
+      v-model:visible="currentDepositInfo.modalVisible"
+    >
+      <a-form>
+        <a-form-item label="名称">{{
+          currentDepositInfo.asset?.name
+        }}</a-form-item>
+        <a-form-item name="count" label="数量">
+          <!-- TODO :max= -->
+          <a-input-number
+            :min="1"
+            v-model:value="currentDepositInfo.count"
+          ></a-input-number>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 我的元兽列表 -->
     <a-table
       class="mb-20"
       row-key="id"
@@ -41,6 +56,7 @@
     >
     </a-table>
 
+    <!-- 对战元兽列表 -->
     <a-table
       row-key="id"
       :loading="monsterListLoading"
@@ -57,7 +73,7 @@
 </template>
 
 <script setup lang="tsx">
-import { formPost, get } from './request'
+import { formPost } from './request'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { useRef } from '@/hooks/useRef'
 import { RACA_SIGN_KEY, RACA_TOKEN_KEY } from '@/constants/storageKey'
@@ -65,68 +81,35 @@ import { Button, message, notification } from 'ant-design-vue'
 import { Contract, utils } from 'ethers'
 import NFTABI from './abi/nft'
 import fixPriceSellABI from './abi/fixPriceSell'
-import { address } from './common'
+import fungibleTokenABI from './abi/fungibleToken'
+import metamonWalletABI from './abi/metamonWallet'
+import {
+  address,
+  GameAsset,
+  Monster,
+  RequestResultCode,
+  WalletAsset,
+} from './common'
+import { reactive } from 'vue-demi'
 
-/**
- * 元兽
- */
-interface Monster {
-  con: number
-  conMax: number
-  createTime: string
-  crg: number
-  crgMax: number
-  exp: number
-  expMax: number
-  id: number
-  imageUrl: string
-  inte: number
-  inteMax: number
-  inv: number
-  invMax: number
-  isPlay: boolean
-  itemId: number
-  itemNum: number
-  lastOwner: string
-  level: number
-  levelMax: number
-  life: number
-  lifeLL: number
-  luk: number
-  lukMax: number
-  monsterUpdate: boolean
-  owner: string
-  race: string
-  rarity: string
-  sca: number
-  scaMax: number
-  status: number
-  tear: number
-  tokenId: number
-  updateTime: string
-  years: number
-}
-
-interface BagItem {
-  bpNum: number
-  /**
-   * 类型
-   * 1 元兽蛋碎片
-   * 2
-   * 3
-   * 4
-   * 5 raca
-   * 6 元兽蛋
-   */
-  bpType: number
-  id: number
-  owner: string
-}
-
-type RequestResultCode = 'SUCCESS' | 'FAIL'
+// const imgs = {
+//   Potion:
+//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_potion.png',
+//   'Metamon Egg':
+//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_egg.png',
+//   'Yellow Diamond':
+//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_yellow_diamond.png',
+//   'Purple Diamond':
+//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_purple_diamond.png',
+//   'Black Diamond':
+//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_black_diamond.png',
+// }
 
 const { account, wallet } = useActiveProvider()
 
+/**
+ * 用到的合约
+ */
 const contracts = {
   [address.METAMON_EGG_ADDRESS]: new Contract(
     address.METAMON_EGG_ADDRESS,
@@ -138,38 +121,52 @@ const contracts = {
     fixPriceSellABI,
     wallet,
   ),
+  [address.fungibleTokenBundle]: new Contract(
+    address.fungibleTokenBundle,
+    fungibleTokenABI,
+    wallet,
+  ),
+  [address.Potion_ADDRESS]: new Contract(
+    address.Potion_ADDRESS,
+    metamonWalletABI,
+    wallet,
+  ),
 }
 
 const [sign, setSign] = useRef(localStorage.getItem(RACA_SIGN_KEY) || '')
 const [token, setToken] = useRef(localStorage.getItem(RACA_TOKEN_KEY) || '')
 
 /**
- * 背包类型 map
+ * 资产类型 map
  */
-const bagItemTypeMap = {
+const assetTypeMap = {
+  0: '元兽',
   1: '元兽蛋碎片',
+  2: '药水',
   5: 'raca',
   6: '元兽蛋',
 }
 
 /**
- * 获取背包 item 名称
+ * 根据类型格式化资产名称
  */
-const getBagItemNameByType = (type: number) =>
-  bagItemTypeMap[type as keyof typeof bagItemTypeMap]
+const formatAssetsNameByType = (type: number) =>
+  assetTypeMap[type as keyof typeof assetTypeMap]
 
 /**
- * 背包列表
+ * 游戏资产
  */
-const [bagList, setBagList] = useRef([] as BagItem[])
+const [gameAssets, setGameAssets] = useRef([] as GameAsset[])
+
 /**
- * 元兽对战列表 loading
+ * 钱包资产 loading
  */
-const [monsterEggLoading, setMonsterEggLoading] = useRef(false)
+const [walletAssetsLoading, setWalletAssetsLoading] = useRef(false)
+
 /**
- * 元兽对战列表
+ * 钱包资产蛋表格
  */
-const [monsterEggList, setMonsterEggList] = useRef([])
+const [walletAssets, setWalletAssets] = useRef([] as WalletAsset[])
 
 /**
  * 我的当前元兽
@@ -187,25 +184,73 @@ const [monsterList, setMonsterList] = useRef([] as Monster[])
 const [monsterListLoading, setMonsterListLoading] = useRef(false)
 
 /**
- * 元兽蛋表格列
+ * 游戏背包资产表格列
  */
-const monsterEggColumns = [
+const gameAssetsColumns = [
   {
     title: 'id ',
     dataIndex: 'id',
   },
   {
+    title: '名称',
+    dataIndex: 'bpType',
+    customRender({ record }: { record: GameAsset }) {
+      return formatAssetsNameByType(record.bpType)
+    },
+  },
+  {
+    title: '数量',
+    dataIndex: 'bpNum',
+  },
+]
+
+/**
+ * 当前钱包资产数据
+ */
+const currentDepositInfo = reactive({
+  asset: null as null | WalletAsset,
+  modalVisible: false,
+  count: 1,
+})
+
+/**
+ * 钱包资产表格列
+ */
+const walletAssetsColumns = [
+  {
+    title: '名称',
+    dataIndex: 'name',
+  },
+  {
+    title: '数量',
+    dataIndex: 'count',
+  },
+  {
+    title: 'tokenId',
+    dataIndex: 'token_id',
+  },
+  {
+    title: 'nft 地址',
+    dataIndex: 'nft_address',
+  },
+  {
     title: '操作',
     dataIndex: 'action',
-    customRender({ record }: { record: Monster }) {
+    customRender({ record }: { record: WalletAsset }) {
       return (
-        <Button type="primary" onClick={() => onShelf(record)}>
-          上架
-        </Button>
+        <>
+          <Button type="link" onClick={() => onShelf(record)}>
+            上架
+          </Button>
+          <Button type="link" onClick={() => onDeposit(record)}>
+            充值
+          </Button>
+        </>
       )
     },
   },
 ]
+
 /**
  * 元兽对战表格列
  */
@@ -318,21 +363,21 @@ const login = async () => {
 }
 
 /**
- * 获取背包数据
+ * 获取游戏资产
  */
-const checkBag = async () => {
+const getGameAssets = async () => {
   const { code, data } = await formPost<{
     code: RequestResultCode
-    data: { item: BagItem[] }
+    data: { item: GameAsset[] }
   }>('/metamon/checkBag', {
     address: account,
   })
 
   if (code === 'SUCCESS') {
-    setBagList((data.item || []).filter(item => item.bpNum > 0))
+    setGameAssets((data.item || []).filter(item => item.bpNum > 0))
   } else {
     notification.error({
-      message: '获取背包数据失败',
+      message: '获取游戏资产失败',
     })
   }
 }
@@ -467,16 +512,19 @@ const updateMonster = async (nftId: number) => {
 }
 
 /**
- * 获取元兽蛋
+ * 获取钱包资产
  */
-const getMonsterEggs = async () => {
+const getWalletAssets = async () => {
   try {
-    setMonsterEggLoading(true)
-    // const count = await contracts[address.METAMON_EGG_ADDRESS].balanceOf(
-    //   wallet.address,
-    //   0,
-    // )
-    // console.log(count)
+    setWalletAssetsLoading(true)
+    const base64Data = await contracts[address.fungibleTokenBundle].tokensOf(
+      wallet.address,
+    )
+    const assets: WalletAsset[] = JSON.parse(
+      window.atob(base64Data.substr(29)),
+    ).tokens
+
+    setWalletAssets(assets)
 
     // contracts[address.METAMON_EGG_ADDRESS]
     //   .balanceOf(wallet.address, 0)
@@ -484,46 +532,105 @@ const getMonsterEggs = async () => {
     //     console.log({ count })
     //   })
 
-    const { code, list } = await get(
-      'https://market-api.radiocaca.com/artworks',
-      {
-        pageNo: 1,
-        pageSize: 100,
-        address: account,
-        status: 'not_on_sale',
-      },
-    )
-    if (code === 200) {
-      const eggs = list.filter(
-        (item: any) => item.nft_address === address.METAMON_EGG_ADDRESS,
-      )
-
-      eggs && eggs.length && setMonsterEggList(eggs)
-    } else {
-      notification.error({
-        message: '获取元兽蛋列表失败',
-      })
-    }
+    // const { code, list } = await get(
+    //   'https://market-api.radiocaca.com/artworks',
+    //   {
+    //     pageNo: 1,
+    //     pageSize: 100,
+    //     address: account,
+    //     status: 'not_on_sale',
+    //   },
+    // )
+    // if (code === 200) {
+    //   setWalletAssets(list)
+    // } else {
+    //   notification.error({
+    //     message: '获取钱包资产失败',
+    //   })
+    // }
   } catch (error) {
     console.error(error)
   } finally {
-    setMonsterEggLoading(false)
+    setWalletAssetsLoading(false)
   }
 }
 
-// TODO
+/**
+ * TODO 上架
+ */
 const onShelf = async (item: any) => {
-  const count = 1
-  await contracts[address.FIX_PRICE_SELL_ADDRESS].sell(
-    item.nft_address,
-    `${item.token_id}`,
-    `${count}`,
-    address.RACA_ADDRESS,
-    utils.parseEther(`${114999}`),
-    0,
-    0,
-  )
+  notification.error({
+    message: `TODO 未实现`,
+  })
+  // const count = 1
+  // await contracts[address.FIX_PRICE_SELL_ADDRESS].sell(
+  //   item.nft_address,
+  //   `${item.token_id}`,
+  //   `${count}`,
+  //   address.RACA_ADDRESS,
+  //   utils.parseEther(`${114999}`),
+  //   0,
+  //   0,
+  // )
 }
+
+/**
+ * 点击表格中某一项进行充值
+ */
+const onDeposit = (item: WalletAsset) => {
+  currentDepositInfo.asset = item
+  currentDepositInfo.modalVisible = true
+}
+
+/**
+ * TODO 将钱包资产充值到游戏中
+ */
+const handleDeposit = async ({ payType, count }: any) => {
+  const { code, data: orderId } = await formPost<{
+    code: RequestResultCode
+    data: string
+  }>('/metamon/transferInBySymbol', {
+    payType,
+    tokenIds: '',
+    num: count,
+    rartity: 1,
+    address: account,
+  })
+
+  if (code === 'SUCCESS') {
+    switch (payType) {
+      // 药水
+      case 2:
+        const tx = await contracts[address.Potion_ADDRESS].deposit1155(
+          address.Potion_ADDRESS,
+          0,
+          count,
+          orderId,
+        )
+        await tx.wait()
+        notification.success({
+          message: `充值成功`,
+        })
+        break
+
+      default:
+        // TODO 完善其他类型充值
+        notification.error({
+          message: `${payType} 类型充值暂未实现`,
+        })
+        break
+    }
+  } else {
+    notification.error({
+      message: '充值失败',
+    })
+  }
+}
+
+/**
+ * TODO 碎片合成元兽蛋
+ */
+const composeMonsterEgg = async (item: any) => {}
 
 /**
  * 战斗20次
@@ -544,10 +651,13 @@ const batchFight20 = async () => {
   })
 }
 
+/**
+ * 初始化数据
+ */
 const initData = async () => {
   await login()
-  checkBag()
-  getMonsterEggs()
+  getGameAssets()
+  getWalletAssets()
   await getSelfMonster()
   await getMonsters()
 }
