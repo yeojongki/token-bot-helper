@@ -138,6 +138,10 @@ const buy = async (idInContract: string, price: number) => {
     const tx = await contracts[address.FIX_PRICE_SELL_ADDRESS].executeAuction(
       idInContract,
       utils.parseEther(price + ''),
+      {
+        gasLimit: 230000,
+        gasPrice: utils.parseUnits(`6`, 'gwei'),
+      },
     )
     console.log(tx)
     await tx.wait()

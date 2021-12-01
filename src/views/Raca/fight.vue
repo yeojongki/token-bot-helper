@@ -82,7 +82,7 @@
       :loading="monsterListLoading"
       :bordered="true"
       :pagination="false"
-      :data-source="[myMonster]"
+      :data-source="myMonsters.list"
       :columns="monsterColumns"
     >
     </a-table>
@@ -193,6 +193,7 @@ const assetAddressMap = {
  */
 const assetPayTypeMap = {
   [address.Potion_ADDRESS]: 2,
+  [address.METAMON_EGG_ADDRESS]: 5,
 }
 
 /**
@@ -253,7 +254,10 @@ const walletAssets = reactive({
 /**
  * 我的当前元兽
  */
-const [myMonster, setMyMonster] = useRef({} as Monster)
+const myMonsters = reactive({
+  list: [] as Monster[],
+  currentId: '',
+})
 
 /**
  * 元兽对战列表
@@ -444,18 +448,23 @@ const getGameAssets = async () => {
 }
 
 /**
- * 获取当前的元兽
+ * 获取我的元兽列表
  */
 const getSelfMonster = async () => {
-  const { code, data } = await formPost<{
+  const {
+    code,
+    data: { metamonList },
+  } = await formPost<{
     code: RequestResultCode
-    data: { monster: Monster }
-  }>('/metamon/getFightMonster', {
+    data: { metamonList: Monster[] }
+  }>('/metamon/getWalletPropertyList', {
+    pageSize: 9999,
+    page: 1,
     address: account,
   })
 
   if (code === 'SUCCESS') {
-    setMyMonster(data.monster)
+    metamonList && (myMonsters.list = metamonList)
   } else {
     notification.error({
       message: '获取我的元兽失败',
@@ -475,7 +484,7 @@ const getMonsters = async () => {
       data: { number: number; objects: Monster[] }
     }>('/metamon/getBattelObjects', {
       address: account,
-      metamonId: myMonster.value.id,
+      metamonId: myMonsters.currentId,
       front: 1,
     })
     if (code === 'SUCCESS') {
@@ -498,7 +507,7 @@ const startPay = async (monsterB: number) => {
     code: RequestResultCode
     data: { amount: number; pay: boolean }
   }>('/metamon/startPay', {
-    monsterA: myMonster.value.id,
+    monsterA: myMonsters.currentId,
     monsterB,
     address: account,
     battleLevel: 1,
@@ -521,7 +530,7 @@ const fight = async (monsterB: number, showMessage = true) => {
     code: RequestResultCode
     data: { challengeResult: boolean }
   }>('/metamon/startBattle', {
-    monsterA: myMonster.value.id,
+    monsterA: myMonsters.currentId,
     monsterB,
     address: account,
     battleLevel: 1,
@@ -661,7 +670,7 @@ const onShelf = async (item: any) => {
   //   `${item.token_id}`,
   //   `${count}`,
   //   address.RACA_ADDRESS,
-  //   utils.parseEther(`${114999}`),
+  //   utils.parseEther(`${920000}`),
   //   0,
   //   0,
   // )
