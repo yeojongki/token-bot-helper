@@ -62,9 +62,8 @@ export interface GameAsset {
  */
 export interface WalletAsset {
   name: string
-  count: string
-  nft_address: string
-  token_id: string
+  count: number
+  address: string
 }
 
 /**

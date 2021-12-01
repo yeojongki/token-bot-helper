@@ -15,12 +15,45 @@
     <a-table
       class="mb-20"
       row-key="id"
-      :loading="walletAssetsLoading"
+      :loading="walletAssets.loading"
       :bordered="true"
       :pagination="false"
-      :data-source="walletAssets"
-      :columns="walletAssetsColumns"
+      :data-source="walletAssets.assets"
+      :columns="walletAssets.columns"
     >
+      <template #title>
+        <div class="flex">
+          <div
+            @click="onWalletAssetChange(address.METAMON_EGG_ADDRESS)"
+            :class="{
+              'nav-item': true,
+              'is-active':
+                walletAssets.activeAsset === address.METAMON_EGG_ADDRESS,
+            }"
+          >
+            蛋
+          </div>
+          <div
+            @click="onWalletAssetChange(address.N_METAMON_ADDRESS)"
+            :class="{
+              'nav-item': true,
+              'is-active':
+                walletAssets.activeAsset === address.N_METAMON_ADDRESS,
+            }"
+          >
+            N元兽
+          </div>
+          <div
+            @click="onWalletAssetChange(address.Potion_ADDRESS)"
+            :class="{
+              'nav-item': true,
+              'is-active': walletAssets.activeAsset === address.Potion_ADDRESS,
+            }"
+          >
+            药水
+          </div>
+        </div>
+      </template>
     </a-table>
 
     <!-- 钱包充值到游戏弹窗 -->
@@ -30,7 +63,7 @@
       :ok-button-props="{ loading: false }"
       v-model:visible="currentDepositInfo.modalVisible"
     >
-      <a-form>
+      <a-form :label-col="4" :wrapper-col="8">
         <a-form-item label="名称">{{
           currentDepositInfo.asset?.name
         }}</a-form-item>
@@ -116,6 +149,11 @@ const contracts = {
     NFTABI,
     wallet,
   ),
+  [address.Potion_ADDRESS]: new Contract(
+    address.Potion_ADDRESS,
+    NFTABI,
+    wallet,
+  ),
   [address.FIX_PRICE_SELL_ADDRESS]: new Contract(
     address.FIX_PRICE_SELL_ADDRESS,
     fixPriceSellABI,
@@ -124,11 +162,6 @@ const contracts = {
   [address.fungibleTokenBundle]: new Contract(
     address.fungibleTokenBundle,
     fungibleTokenABI,
-    wallet,
-  ),
-  [address.Potion_ADDRESS]: new Contract(
-    address.Potion_ADDRESS,
-    metamonWalletABI,
     wallet,
   ),
 }
@@ -148,6 +181,15 @@ const assetTypeMap = {
 }
 
 /**
+ * 资产地址 map
+ */
+const assetAddressMap = {
+  [address.N_METAMON_ADDRESS]: 'N元兽',
+  [address.Potion_ADDRESS]: '药水',
+  [address.METAMON_EGG_ADDRESS]: '元兽蛋',
+}
+
+/**
  * 根据类型格式化资产名称
  */
 const formatAssetsNameByType = (type: number) =>
@@ -159,14 +201,47 @@ const formatAssetsNameByType = (type: number) =>
 const [gameAssets, setGameAssets] = useRef([] as GameAsset[])
 
 /**
- * 钱包资产 loading
+ * 钱包资产数据
  */
-const [walletAssetsLoading, setWalletAssetsLoading] = useRef(false)
-
-/**
- * 钱包资产蛋表格
- */
-const [walletAssets, setWalletAssets] = useRef([] as WalletAsset[])
+const walletAssets = reactive({
+  assets: [] as WalletAsset[],
+  loading: false,
+  activeAsset: address.Potion_ADDRESS,
+  columns: [
+    {
+      title: '名称',
+      dataIndex: 'name',
+    },
+    {
+      title: '数量',
+      dataIndex: 'count',
+    },
+    // {
+    //   title: 'tokenId',
+    //   dataIndex: 'token_id',
+    // },
+    // {
+    //   title: 'nft 地址',
+    //   dataIndex: 'nft_address',
+    // },
+    {
+      title: '操作',
+      dataIndex: 'action',
+      customRender({ record }: { record: WalletAsset }) {
+        return (
+          <>
+            <Button type="link" onClick={() => onShelf(record)}>
+              上架
+            </Button>
+            <Button type="link" onClick={() => onDeposit(record)}>
+              充值
+            </Button>
+          </>
+        )
+      },
+    },
+  ],
+})
 
 /**
  * 我的当前元兽
@@ -212,44 +287,6 @@ const currentDepositInfo = reactive({
   modalVisible: false,
   count: 1,
 })
-
-/**
- * 钱包资产表格列
- */
-const walletAssetsColumns = [
-  {
-    title: '名称',
-    dataIndex: 'name',
-  },
-  {
-    title: '数量',
-    dataIndex: 'count',
-  },
-  {
-    title: 'tokenId',
-    dataIndex: 'token_id',
-  },
-  {
-    title: 'nft 地址',
-    dataIndex: 'nft_address',
-  },
-  {
-    title: '操作',
-    dataIndex: 'action',
-    customRender({ record }: { record: WalletAsset }) {
-      return (
-        <>
-          <Button type="link" onClick={() => onShelf(record)}>
-            上架
-          </Button>
-          <Button type="link" onClick={() => onDeposit(record)}>
-            充值
-          </Button>
-        </>
-      )
-    },
-  },
-]
 
 /**
  * 元兽对战表格列
@@ -516,15 +553,32 @@ const updateMonster = async (nftId: number) => {
  */
 const getWalletAssets = async () => {
   try {
-    setWalletAssetsLoading(true)
-    const base64Data = await contracts[address.fungibleTokenBundle].tokensOf(
-      wallet.address,
-    )
-    const assets: WalletAsset[] = JSON.parse(
-      window.atob(base64Data.substr(29)),
-    ).tokens
+    // const base64Data = await contracts[address.fungibleTokenBundle].tokensOf(
+    //   wallet.address,
+    // )
+    // const assets: WalletAsset[] = JSON.parse(
+    //   window.atob(base64Data.substr(29)),
+    // ).tokens
+    walletAssets.loading = true
 
-    setWalletAssets(assets)
+    const assetContract = contracts[walletAssets.activeAsset]
+
+    if (!assetContract) {
+      notification.error({
+        message: `合约 【${walletAssets.activeAsset}】未实现`,
+      })
+      return
+    }
+
+    const count = Number(await assetContract.balanceOf(wallet.address, 0))
+
+    walletAssets.assets = [
+      {
+        name: assetAddressMap[walletAssets.activeAsset],
+        count,
+        address: walletAssets.activeAsset,
+      },
+    ]
 
     // contracts[address.METAMON_EGG_ADDRESS]
     //   .balanceOf(wallet.address, 0)
@@ -550,8 +604,11 @@ const getWalletAssets = async () => {
     // }
   } catch (error) {
     console.error(error)
+    notification.error({
+      message: error,
+    })
   } finally {
-    setWalletAssetsLoading(false)
+    walletAssets.loading = false
   }
 }
 
@@ -652,6 +709,14 @@ const batchFight20 = async () => {
 }
 
 /**
+ * 钱包资产类型改变
+ */
+const onWalletAssetChange = (assetAddress: string) => {
+  walletAssets.activeAsset = assetAddress
+  getWalletAssets()
+}
+
+/**
  * 初始化数据
  */
 const initData = async () => {
@@ -665,9 +730,18 @@ const initData = async () => {
 initData()
 </script>
 
-<style>
+<style lang="less" scoped>
 .item-img {
   width: 80px;
   height: 80px;
+}
+.nav-item {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  margin-right: 20px;
+  &.is-active {
+    color: #1dc9c2;
+  }
 }
 </style>
