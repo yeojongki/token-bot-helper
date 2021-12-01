@@ -58,15 +58,13 @@
 
     <!-- 钱包充值到游戏弹窗 -->
     <a-modal
-      title="充值"
-      @ok="handleDeposit(currentDepositInfo)"
-      :ok-button-props="{ loading: false }"
+      title="充值到游戏中"
+      @ok="handleDeposit"
+      :ok-button-props="{ loading: walletAssets.submitLoading }"
       v-model:visible="currentDepositInfo.modalVisible"
     >
-      <a-form :label-col="4" :wrapper-col="8">
-        <a-form-item label="名称">{{
-          currentDepositInfo.asset?.name
-        }}</a-form-item>
+      <a-form>
+        <a-form-item label="名称">{{ currentDepositInfo.name }}</a-form-item>
         <a-form-item name="count" label="数量">
           <!-- TODO :max= -->
           <a-input-number
@@ -123,7 +121,8 @@ import {
   RequestResultCode,
   WalletAsset,
 } from './common'
-import { reactive } from 'vue-demi'
+import { reactive } from 'vue'
+import { withPoll } from '@/utils'
 
 // const imgs = {
 //   Potion:
@@ -190,6 +189,13 @@ const assetAddressMap = {
 }
 
 /**
+ * 资产 payType地址 map
+ */
+const assetPayTypeMap = {
+  [address.Potion_ADDRESS]: 2,
+}
+
+/**
  * 根据类型格式化资产名称
  */
 const formatAssetsNameByType = (type: number) =>
@@ -206,6 +212,7 @@ const [gameAssets, setGameAssets] = useRef([] as GameAsset[])
 const walletAssets = reactive({
   assets: [] as WalletAsset[],
   loading: false,
+  submitLoading: false,
   activeAsset: address.Potion_ADDRESS,
   columns: [
     {
@@ -283,9 +290,15 @@ const gameAssetsColumns = [
  * 当前钱包资产数据
  */
 const currentDepositInfo = reactive({
-  asset: null as null | WalletAsset,
   modalVisible: false,
+  /**
+   * 充值数量
+   */
   count: 1,
+  tokenIds: '',
+  payType: -1,
+  rartity: 1,
+  name: '',
 })
 
 /**
@@ -311,8 +324,8 @@ const monsterColumns = [
   {
     title: '能否升级',
     dataIndex: 'monsterUpdate',
-    customRender({ text }: { text: boolean }) {
-      return text ? '✅' : '❌'
+    customRender({ record }: any) {
+      return record.exp > record.expMax ? '✅' : '❌'
     },
   },
   {
@@ -327,7 +340,18 @@ const monsterColumns = [
     title: '图片',
     dataIndex: 'imageUrl',
     customRender({ text }: any) {
-      return <img class="item-img" src={text} />
+      return <img class="item-img" width="80" height="80" src={text} />
+    },
+  },
+  {
+    title: '操作',
+    dataIndex: 'action',
+    customRender({ record }: any) {
+      return (
+        <Button type="link" onClick={() => updateMonster(record.id)}>
+          升级
+        </Button>
+      )
     },
   },
 ]
@@ -541,6 +565,9 @@ const updateMonster = async (nftId: number) => {
       duration: 1.5,
       content: '升级成功',
     })
+
+    // 刷新列表
+    getMonsters()
   } else {
     notification.error({
       message: '升级失败',
@@ -571,12 +598,21 @@ const getWalletAssets = async () => {
     }
 
     const count = Number(await assetContract.balanceOf(wallet.address, 0))
+    const payType = assetPayTypeMap[walletAssets.activeAsset]
+
+    if (!payType) {
+      notification.error({
+        message: `payType【${walletAssets.activeAsset}】未实现`,
+      })
+      return
+    }
 
     walletAssets.assets = [
       {
         name: assetAddressMap[walletAssets.activeAsset],
         count,
         address: walletAssets.activeAsset,
+        payType,
       },
     ]
 
@@ -635,52 +671,110 @@ const onShelf = async (item: any) => {
  * 点击表格中某一项进行充值
  */
 const onDeposit = (item: WalletAsset) => {
-  currentDepositInfo.asset = item
+  Object.assign(currentDepositInfo, item)
   currentDepositInfo.modalVisible = true
 }
 
 /**
- * TODO 将钱包资产充值到游戏中
+ * 检查钱包充值游戏订单状态
  */
-const handleDeposit = async ({ payType, count }: any) => {
-  const { code, data: orderId } = await formPost<{
+const checkDepositOrderStatus = async (txHash: string) => {
+  const {
+    code,
+    data: { status },
+  } = await formPost<{
     code: RequestResultCode
-    data: string
-  }>('/metamon/transferInBySymbol', {
-    payType,
-    tokenIds: '',
-    num: count,
-    rartity: 1,
-    address: account,
+    data: { status: boolean }
+  }>('/metamon/orderStatus', {
+    address: wallet.address,
+    txHash,
   })
 
-  if (code === 'SUCCESS') {
-    switch (payType) {
-      // 药水
-      case 2:
-        const tx = await contracts[address.Potion_ADDRESS].deposit1155(
-          address.Potion_ADDRESS,
-          0,
-          count,
-          orderId,
-        )
-        await tx.wait()
+  if (code === 'SUCCESS' && status) {
+    return undefined
+  }
+
+  return true
+}
+
+/**
+ * 将钱包资产充值到游戏中
+ */
+const handleDeposit = async () => {
+  walletAssets.submitLoading = true
+  try {
+    const { payType, count, tokenIds = '', rartity = 1 } = currentDepositInfo
+    const { code, data: orderId } = await formPost<{
+      code: RequestResultCode
+      data: string
+    }>('/metamon/transferInBySymbol', {
+      payType,
+      tokenIds,
+      num: count,
+      rartity,
+      address: account,
+    })
+
+    if (code === 'SUCCESS') {
+      const contract = new Contract(
+        address.METAMON_WALLET,
+        metamonWalletABI,
+        wallet,
+      )
+
+      // 交易哈希
+      let txHash = ''
+
+      // TODO 其他类型
+      switch (payType) {
+        // 药水
+        case 2:
+          const tx = await contract.deposit1155(
+            address.Potion_ADDRESS,
+            0,
+            count,
+            orderId,
+            {
+              gasLimit: 50000,
+              gasPrice: utils.parseUnits(`6`, 'gwei'),
+            },
+          )
+          txHash = tx.hash
+
+          await tx.wait()
+
+          break
+
+        default:
+          // TODO 完善其他类型充值
+          notification.error({
+            message: `${payType} 类型充值暂未实现`,
+          })
+          break
+      }
+
+      if (txHash) {
+        await withPoll(() => checkDepositOrderStatus(txHash))
+
         notification.success({
           message: `充值成功`,
         })
-        break
 
-      default:
-        // TODO 完善其他类型充值
-        notification.error({
-          message: `${payType} 类型充值暂未实现`,
-        })
-        break
+        // 弹窗关闭
+        currentDepositInfo.modalVisible = false
+        // 刷新列表
+        getWalletAssets()
+        getGameAssets()
+      }
+    } else {
+      notification.error({
+        message: '充值失败',
+      })
     }
-  } else {
-    notification.error({
-      message: '充值失败',
-    })
+  } catch (error) {
+    console.error(error)
+  } finally {
+    walletAssets.submitLoading = false
   }
 }
 

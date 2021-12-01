@@ -64,6 +64,10 @@ export interface WalletAsset {
   name: string
   count: number
   address: string
+  /**
+   * 2 药水
+   */
+  payType: number
 }
 
 /**

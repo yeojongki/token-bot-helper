@@ -35,7 +35,9 @@
             </template>
           </a-list-item-meta>
           <template #actions>
-            <a>购买</a>
+            <a @click="buy(item.id, Number(item.fixed_price) * item.count)"
+              >购买</a
+            >
             <a
               target="_blank"
               :href="`https://market.radiocaca.com/#/market-place/${item.id}`"
@@ -55,8 +57,14 @@ import { reactive, ref } from 'vue'
 import { address } from './common'
 import fixPriceSellABI from './abi/fixPriceSell'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
+import { useRef } from '@/hooks/useRef'
 
 const { wallet } = useActiveProvider()
+
+/**
+ * 加载 loading
+ */
+const [loading, setLoading] = useRef(false)
 
 const contracts = {
   [address.FIX_PRICE_SELL_ADDRESS]: new Contract(
@@ -76,11 +84,6 @@ const list = ref(
     fixed_price: string
   }[],
 )
-
-/**
- * 加载 loading
- */
-const loading = ref(false)
 
 /**
  * 搜索参数
@@ -129,11 +132,20 @@ const formatCount = (price: number) => new Intl.NumberFormat().format(price)
 /**
  * 购买
  */
-const buy = async (idInContract: string, price: string) => {
-  await contracts[address.FIX_PRICE_SELL_ADDRESS].executeAuction(
-    idInContract,
-    utils.parseEther(price),
-  )
+const buy = async (idInContract: string, price: number) => {
+  setLoading(true)
+  try {
+    const tx = await contracts[address.FIX_PRICE_SELL_ADDRESS].executeAuction(
+      idInContract,
+      utils.parseEther(price + ''),
+    )
+    console.log(tx)
+    await tx.wait()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    setLoading(false)
+  }
 }
 
 handleSearch()
