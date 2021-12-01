@@ -408,12 +408,12 @@ export const getGoldDaily = (
   }
 
   // 等级倍数 * 每秒区块 * 60 分钟 * 24 小时
-  return (
+  return toFixed(
     gold *
-    (60 / 3) *
-    levelMultiple[level as unknown as keyof typeof levelMultiple] *
-    24 *
-    60
+      (60 / 3) *
+      levelMultiple[level as unknown as keyof typeof levelMultiple] *
+      24 *
+      60,
   )
 }
 

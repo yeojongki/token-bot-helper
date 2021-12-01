@@ -348,7 +348,7 @@ async function getWorkPlayerDetail(
   })
 
   // 每日金币
-  const goldDaily = toFixed(getGoldDaily(workType, mainProp, baseInfo.level))
+  const goldDaily = getGoldDaily(workType, mainProp, baseInfo.level)
 
   return {
     ...baseInfo,
@@ -356,7 +356,7 @@ async function getWorkPlayerDetail(
     tokenId,
     goldDaily,
     goldDailyUsd: toFixed(goldDaily * bnxStore.goldPrice),
-    income,
+    income: toFixed(income),
     incomeUsd: toFixed(income * bnxStore.goldPrice),
     isAdvanceJob,
     workType,
