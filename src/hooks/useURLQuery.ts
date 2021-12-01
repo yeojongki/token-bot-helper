@@ -2,5 +2,5 @@ import { useRoute } from 'vue-router'
 
 export const useRouteQuery = () => {
   const route = useRoute()
-  return route.query
+  return route.query as Record<string, string>
 }

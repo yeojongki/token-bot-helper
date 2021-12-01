@@ -59,7 +59,7 @@ export class TokenWithPrice extends Token {
 export const useTokensStore = defineStore({
   id: 'tokens',
   state: () => ({
-    ethPrice: 538,
+    ethPrice: 600,
     loading: false,
     /**
      * 是否在

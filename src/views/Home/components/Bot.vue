@@ -1,17 +1,20 @@
 <template>
   <a-form :disabled="status.running" class="Bot" ref="formRef" :model="config">
-    <a-form-item label="支出的 token 地址" name="poolContract" :required="true">
+    <a-form-item label="支出 token 地址" name="poolContract" :required="true">
       <div class="flex">
         <a-select class="w-full" v-model:value="config.poolContract">
           <a-select-option v-for="item in baseTokens" :value="item.address">{{
             item.name
           }}</a-select-option>
         </a-select>
+        <async-button :api="approveInputToken" type="primary" class="ml-10"
+          >授权</async-button
+        >
       </div>
     </a-form-item>
 
     <a-form-item
-      :label="`获得的 token 地址${
+      :label="`获得 token 地址${
         buyTokenPrice ? ` (当前价格：${buyTokenPrice})` : ''
       }`"
       name="buyContract"
@@ -19,7 +22,10 @@
     >
       <div class="flex">
         <a-input v-model:value="config.buyContract" />
-        <async-button :api="approveToken" type="primary" class="ml-10 mr-10"
+        <async-button
+          :api="approveOutputToken"
+          type="primary"
+          class="ml-10 mr-10"
           >授权</async-button
         >
         <a-button
@@ -64,18 +70,18 @@
       </a-form-item>
 
       <a-form-item class="flex-1 ml-10" label="Gas Limit" name="gasLimit">
-        <a-input-number v-model:value="config.gasLimit" :min="5" />
+        <a-input-number v-model:value="config.gasLimit" :min="70000" />
       </a-form-item>
     </div>
 
     <a-form-item>
-      <a-button type="primary" class="mr-10" @click="submitForm"
+      <a-button type="primary" class="mr-10" @click="startBuying"
         >开始买入</a-button
       >
       <a-button class="mr-10" @click="resetForm">重置配置</a-button>
       <a-button
-        @click="tokenListStore.updateEthPrice"
-        :loading="tokenListStore.loading"
+        @click="tokensStore.updateEthPrice"
+        :loading="tokensStore.loading"
         >更新 BNB 价格</a-button
       >
     </a-form-item>
@@ -95,6 +101,7 @@ import ERC20_ABI from '@/constants/erc20'
 import { BigNumber, utils } from 'ethers'
 import { useActiveProvider } from '@/hooks/useActiveProvider'
 import { useTokensStore } from '@/store/tokens'
+import { useRouteQuery } from '@/hooks/useURLQuery'
 
 interface SwapInfo {
   buyToken: Token | null
@@ -102,23 +109,32 @@ interface SwapInfo {
   poolContract: Contract | null
 }
 
-const tokenListStore = useTokensStore()
+const tokensStore = useTokensStore()
+const {
+  buyAmount = 0,
+  inputCurrency = WBNB_TOKEN.address,
+  outputCurrency = '0x12bb890508c125661e03b09ec06e404bc9289040',
+  gasPrice = 7,
+  gasLimit = 4500000,
+  slippage = 10,
+  minPoolSize = 0,
+} = useRouteQuery()
 
 /**
  * 购买配置信息
  */
 const config = reactive({
-  buyAmount: 0,
-  poolContract: WBNB_TOKEN.address,
-  buyContract: '0x12bb890508c125661e03b09ec06e404bc9289040',
-  minPoolSize: 0,
-  gasPrice: 7.1,
-  gasLimit: 4500000,
-  slippage: 10,
+  buyAmount,
+  poolContract: inputCurrency,
+  buyContract: outputCurrency,
+  gasPrice,
+  gasLimit,
+  slippage,
+  minPoolSize,
 })
 
 // const provider = userStore.activeProvider.provider
-const { provider, chainId, account } = useActiveProvider()
+const { provider, account } = useActiveProvider()
 
 const swapInfo = reactive<SwapInfo>({
   buyContract: new Contract(config.buyContract, ERC20_ABI, provider),
@@ -161,7 +177,11 @@ const baseTokens = [WBNB_TOKEN, BUSD_TOKEN, USDT_TOKEN]
 const [buyTokenPrice, setBuyTokenPrice] = useRef(0)
 
 const formRef = ref<any>(null)
-const submitForm = () => {
+
+/**
+ * TODO 开始买入
+ */
+const startBuying = () => {
   formRef.value?.validate(async (valid: boolean) => {
     if (valid) {
       // 设置正在运行
@@ -174,26 +194,38 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 
-// Token 授权
-const approveToken = async () => {
-  // await Promise.resolve()
-  return checkApproved()
-}
-
-// 是否授权
-const checkApproved = async () => {
+/**
+ * 检查授权数量
+ */
+const checkAllowance = async (contract: Contract | null) => {
   try {
-    const currentAllowance: BigNumber = await swapInfo.buyContract?.allowance(
-      account,
-      ROUTER_ADDRESS,
-    )
-    // utils.parseEther(result)
-    // return new TokenAmount(swapInfo.buyContract, result.toString())
-    console.log(utils.formatEther(currentAllowance))
+    if (!contract) {
+      return Promise.reject('contract is null')
+    } else {
+      const currentAllowance: BigNumber = await contract.allowance(
+        account,
+        ROUTER_ADDRESS,
+      )
+      // utils.parseEther(result)
+      // return new TokenAmount(swapInfo.buyContract, result.toString())
+      console.log(utils.formatEther(currentAllowance))
+    }
   } catch (error) {
     console.log(error)
   }
 }
+
+/**
+ * 花费的 token 授权
+ */
+const approveInputToken = async () =>
+  checkAllowance(swapInfo.poolContract as Contract)
+
+/**
+ * 获得的 token 授权
+ */
+const approveOutputToken = async () =>
+  checkAllowance(swapInfo.buyContract as Contract)
 
 // 轮询当前购买的 token 价格
 const loopTokenPrice = async () => {
@@ -209,14 +241,22 @@ const loopTokenPrice = async () => {
     await withPoll(
       async () => {
         const price = await getTokenPrice(
-          PoolType.UNKNOWN,
+          config.poolContract === WBNB_TOKEN.address
+            ? PoolType.BNB
+            : config.poolContract === BUSD_TOKEN.address
+            ? PoolType.BUSD
+            : config.poolContract === USDT_TOKEN.address
+            ? PoolType.USDT
+            : PoolType.UNKNOWN,
           config.buyContract,
           provider,
-          // priceStore.ethPrice,
         )
 
-        // console.log(`当前价格: ${price}`)
-        setBuyTokenPrice(price)
+        setBuyTokenPrice(
+          config.poolContract === WBNB_TOKEN.address
+            ? price * tokensStore.ethPrice
+            : price,
+        )
 
         if (status.loopPriceStatus === 'loading') {
           status.loopPriceStatus = 'started'
@@ -225,7 +265,7 @@ const loopTokenPrice = async () => {
         return status.loopPriceEnded
         // return price < 0.063 && price > 0 ? true : undefined
       },
-      { interval: 77 },
+      { interval: 100 },
     )
   } finally {
     status.loopPriceStatus = 'started'
