@@ -17,7 +17,6 @@ import {
   Trade,
   TokenAmount,
   JSBI,
-  CurrencyAmount,
 } from '@pancakeswap/sdk'
 import { Contract, providers, Signer, utils } from 'ethers'
 import { isAddress, PollOptions } from 'ethers/lib/utils'
@@ -243,4 +242,37 @@ export async function getBlockNumber(provider: providers.BaseProvider) {
  */
 export function toFixed(number: number, fixCount = 2) {
   return Number(number.toFixed(fixCount))
+}
+
+/**
+ * 睡眠
+ * @param timeout
+ * @returns
+ */
+export function sleep(timeout: number) {
+  return new Promise<void>(resolve => {
+    setTimeout(() => {
+      resolve()
+    }, timeout)
+  })
+}
+
+/**
+ * timeout 毫秒后执行函数
+ * @param fn
+ * @param timeout
+ * @returns
+ */
+export function execWithSleep<T = any>(fn: () => Promise<T>, timeout: number) {
+  return new Promise<T>((resolve, reject) => {
+    sleep(timeout).then(() => {
+      try {
+        fn()
+          .then(r => resolve(r))
+          .catch(reject)
+      } catch (error) {
+        reject(error)
+      }
+    })
+  })
 }

@@ -29,9 +29,15 @@ export interface Monster {
   owner: string
   race: string
   rarity: string
+  /**
+   * 总属性
+   */
   sca: number
   scaMax: number
   status: number
+  /**
+   * 可对战次数
+   */
   tear: number
   tokenId: number
   updateTime: string
@@ -90,4 +96,23 @@ export const address = {
   Diamond_ADDRESS: '0x5dc3FeD851e07715965E5727592CE33d14b7828D',
   METAMON_WALLET: '0xEF0Dff2D82B09c6A9fB9Cd261B3FcBb7b0560b28',
   fungibleTokenBundle: '0x83A0F9139Dcf4EDa6668E91017E17887802234a5',
+}
+
+/**
+ * 获取对战列表中最低属性的元兽 id
+ * @param list
+ * @returns
+ */
+export const getMinimumIdFormList = (list: Monster[]) => {
+  let minimumId = list[0].id
+  let minimumSca = list[0].sca
+
+  list.forEach(item => {
+    if (item.sca < minimumSca) {
+      minimumId = item.id
+      minimumSca = item.sca
+    }
+  })
+
+  return minimumId
 }

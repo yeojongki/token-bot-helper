@@ -4,11 +4,15 @@
     <a-table
       class="mb-20"
       row-key="id"
+      :loading="gameAssets.loading"
       :bordered="true"
-      :columns="gameAssetsColumns"
+      :columns="gameAssets.columns"
       :pagination="false"
-      :data-source="gameAssets"
+      :data-source="gameAssets.list"
     >
+      <template #title>
+        <span class="font-bold">游戏背包资产</span>
+      </template>
     </a-table>
 
     <!-- 钱包资产表格 -->
@@ -23,6 +27,7 @@
     >
       <template #title>
         <div class="flex">
+          <div class="font-bold mr-10">钱包资产:</div>
           <div
             @click="onWalletAssetChange(address.METAMON_EGG_ADDRESS)"
             :class="{
@@ -79,25 +84,29 @@
     <a-table
       class="mb-20"
       row-key="id"
-      :loading="monsterListLoading"
+      :loading="myMonsters.loading"
       :bordered="true"
       :pagination="false"
       :data-source="myMonsters.list"
       :columns="monsterColumns"
     >
+      <template #title>
+        <span class="font-bold">我的元兽</span>
+      </template>
     </a-table>
 
     <!-- 对战元兽列表 -->
     <a-table
       row-key="id"
-      :loading="monsterListLoading"
+      :loading="battleList.loading"
       :bordered="true"
       :pagination="false"
-      :data-source="monsterList"
+      :data-source="battleList.list"
       :columns="battleListColumns"
     >
       <template #title>
-        <async-button :api="batchFight20">战斗20次</async-button>
+        <span class="font-bold">对战元兽</span>
+        <!-- <async-button :api="batchFightAll">战斗所有次数</async-button> -->
       </template>
     </a-table>
   </div>
@@ -117,12 +126,13 @@ import metamonWalletABI from './abi/metamonWallet'
 import {
   address,
   GameAsset,
+  getMinimumIdFormList,
   Monster,
   RequestResultCode,
   WalletAsset,
 } from './common'
-import { reactive } from 'vue'
-import { withPoll } from '@/utils'
+import { computed, reactive } from 'vue'
+import { execWithSleep, withPoll } from '@/utils'
 
 // const imgs = {
 //   Potion:
@@ -203,11 +213,6 @@ const formatAssetsNameByType = (type: number) =>
   assetTypeMap[type as keyof typeof assetTypeMap]
 
 /**
- * 游戏资产
- */
-const [gameAssets, setGameAssets] = useRef([] as GameAsset[])
-
-/**
  * 钱包资产数据
  */
 const walletAssets = reactive({
@@ -256,53 +261,8 @@ const walletAssets = reactive({
  */
 const myMonsters = reactive({
   list: [] as Monster[],
-  currentId: '',
-})
-
-/**
- * 元兽对战列表
- */
-const [monsterList, setMonsterList] = useRef([] as Monster[])
-
-/**
- * 元兽对战列表 loading
- */
-const [monsterListLoading, setMonsterListLoading] = useRef(false)
-
-/**
- * 游戏背包资产表格列
- */
-const gameAssetsColumns = [
-  {
-    title: 'id ',
-    dataIndex: 'id',
-  },
-  {
-    title: '名称',
-    dataIndex: 'bpType',
-    customRender({ record }: { record: GameAsset }) {
-      return formatAssetsNameByType(record.bpType)
-    },
-  },
-  {
-    title: '数量',
-    dataIndex: 'bpNum',
-  },
-]
-
-/**
- * 当前钱包资产数据
- */
-const currentDepositInfo = reactive({
-  modalVisible: false,
-  /**
-   * 充值数量
-   */
-  count: 1,
-  tokenIds: '',
-  payType: -1,
-  rartity: 1,
-  name: '',
+  currentId: -1,
+  loading: false,
 })
 
 /**
@@ -350,15 +310,118 @@ const monsterColumns = [
   {
     title: '操作',
     dataIndex: 'action',
-    customRender({ record }: any) {
+    customRender({ record }: { record: Monster }) {
+      // <Button type="link" onClick={() => setBattleMetamon(record.id)}>
+      //     设为战斗
+      //   </Button>
       return (
-        <Button type="link" onClick={() => updateMonster(record.id)}>
-          升级
-        </Button>
+        <>
+          <Button
+            type="link"
+            onClick={() => batchFightAll(record.id, record.tear)}
+          >
+            战斗所有次数
+          </Button>
+          <Button type="link" onClick={() => updateMonster(record.id)}>
+            升级
+          </Button>
+        </>
       )
     },
   },
 ]
+
+/**
+ * 元兽对战列表信息
+ */
+const battleList = reactive({
+  loading: false,
+  list: [] as Monster[],
+  column: monsterColumns.concat([
+    {
+      title: '操作',
+      dataIndex: 'action',
+      customRender({ record }: { record: Monster }) {
+        return (
+          <Button type="primary" onClick={() => fight(record.id, true)}>
+            battle
+          </Button>
+        )
+      },
+    },
+  ]),
+})
+
+/**
+ * 游戏背包资产
+ */
+const gameAssets = reactive({
+  loading: false,
+  list: [] as GameAsset[],
+  columns: [
+    {
+      title: 'id ',
+      dataIndex: 'id',
+    },
+    {
+      title: '名称',
+      dataIndex: 'bpType',
+      customRender({ record }: { record: GameAsset }) {
+        return formatAssetsNameByType(record.bpType)
+      },
+    },
+    {
+      title: '数量',
+      dataIndex: 'bpNum',
+    },
+    {
+      title: '操作',
+      dataIndex: 'action',
+      customRender({ record }: { record: GameAsset }) {
+        if (record.bpType === 1) {
+          return (
+            <Button
+              type="primary"
+              disabled={!canComposeMetamonEgg.value}
+              onClick={composeMonsterEgg}
+            >
+              合成
+            </Button>
+          )
+        }
+
+        return ''
+      },
+    },
+  ],
+})
+
+/**
+ * 是否能合成蛋
+ */
+const canComposeMetamonEgg = computed(() => {
+  const eggFragments = gameAssets.list.find(item => item.bpType === 1)
+  if (eggFragments && eggFragments.bpNum >= 1000) {
+    return true
+  }
+
+  return false
+})
+
+/**
+ * 当前钱包资产数据
+ */
+const currentDepositInfo = reactive({
+  modalVisible: false,
+  /**
+   * 充值数量
+   */
+  count: 1,
+  tokenIds: '',
+  payType: -1,
+  rartity: 1,
+  name: '',
+})
 
 /**
  * 对战表格列
@@ -431,19 +494,26 @@ const login = async () => {
  * 获取游戏资产
  */
 const getGameAssets = async () => {
-  const { code, data } = await formPost<{
-    code: RequestResultCode
-    data: { item: GameAsset[] }
-  }>('/metamon/checkBag', {
-    address: account,
-  })
-
-  if (code === 'SUCCESS') {
-    setGameAssets((data.item || []).filter(item => item.bpNum > 0))
-  } else {
-    notification.error({
-      message: '获取游戏资产失败',
+  try {
+    gameAssets.loading = true
+    const { code, data } = await formPost<{
+      code: RequestResultCode
+      data: { item: GameAsset[] }
+    }>('/metamon/checkBag', {
+      address: account,
     })
+
+    if (code === 'SUCCESS') {
+      gameAssets.list = (data.item || []).filter(item => item.bpNum > 0)
+    } else {
+      notification.error({
+        message: '获取游戏资产失败',
+      })
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    gameAssets.loading = false
   }
 }
 
@@ -451,33 +521,40 @@ const getGameAssets = async () => {
  * 获取我的元兽列表
  */
 const getSelfMonster = async () => {
-  const {
-    code,
-    data: { metamonList },
-  } = await formPost<{
-    code: RequestResultCode
-    data: { metamonList: Monster[] }
-  }>('/metamon/getWalletPropertyList', {
-    pageSize: 9999,
-    page: 1,
-    address: account,
-  })
-
-  if (code === 'SUCCESS') {
-    metamonList && (myMonsters.list = metamonList)
-  } else {
-    notification.error({
-      message: '获取我的元兽失败',
+  try {
+    myMonsters.loading = true
+    const {
+      code,
+      data: { metamonList },
+    } = await formPost<{
+      code: RequestResultCode
+      data: { metamonList: Monster[] }
+    }>('/metamon/getWalletPropertyList', {
+      pageSize: 9999,
+      page: 1,
+      address: account,
     })
+
+    if (code === 'SUCCESS') {
+      metamonList && (myMonsters.list = metamonList)
+    } else {
+      notification.error({
+        message: '获取我的元兽失败',
+      })
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    myMonsters.loading = false
   }
 }
 
 /**
  * 获取对战列表
  */
-const getMonsters = async () => {
+const getBattleList = async () => {
   try {
-    setMonsterListLoading(true)
+    battleList.loading = true
 
     const { code, data } = await formPost<{
       code: RequestResultCode
@@ -488,14 +565,14 @@ const getMonsters = async () => {
       front: 1,
     })
     if (code === 'SUCCESS') {
-      setMonsterList(data.objects)
+      battleList.list = data.objects
     } else {
       notification.error({
         message: '获取对战列表失败',
       })
     }
   } finally {
-    setMonsterListLoading(false)
+    battleList.loading = false
   }
 }
 
@@ -576,7 +653,7 @@ const updateMonster = async (nftId: number) => {
     })
 
     // 刷新列表
-    getMonsters()
+    getBattleList()
   } else {
     notification.error({
       message: '升级失败',
@@ -790,25 +867,63 @@ const handleDeposit = async () => {
 /**
  * TODO 碎片合成元兽蛋
  */
-const composeMonsterEgg = async (item: any) => {}
+const composeMonsterEgg = async () => {
+  try {
+    gameAssets.loading = true
+    const { code } = await formPost<{
+      code: RequestResultCode
+    }>('/metamon/composeMonsterEgg', {
+      address: account,
+    })
+
+    if (code === 'SUCCESS') {
+      message.success({
+        duration: 1.5,
+        content: '成功',
+      })
+
+      // 刷新列表
+      getGameAssets()
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    gameAssets.loading = false
+  }
+}
 
 /**
- * 战斗20次
+ * 战斗所有次数
  */
-const batchFight20 = async () => {
-  const datas = await Promise.all(
-    monsterList.value.map(({ id }) => fight(id, false)),
-  )
+const batchFightAll = async (metamonId: number, tear: number) => {
+  try {
+    myMonsters.loading = true
 
-  const successCount = datas.reduce(
-    (prev: number, next: number) => prev + next,
-    0,
-  )
+    await setBattleMetamon(metamonId, false)
 
-  notification.success({
-    duration: null,
-    message: `成功${successCount}次, 失败${20 - successCount}次`,
-  })
+    // 对战列表中最低属性元兽 id
+    const minimumId = getMinimumIdFormList(battleList.list)
+
+    const datas = await Promise.all(
+      Array.from(Array(tear), (_, k) => k).map(() =>
+        execWithSleep(async () => await fight(minimumId, false), 150),
+      ),
+    )
+
+    const successCount = datas.reduce(
+      (prev: number, next: number) => prev + next,
+      0,
+    )
+
+    notification.success({
+      duration: null,
+      message: `挑战${tear}次, 成功${successCount}, 失败${tear - successCount}`,
+    })
+  } catch (error) {
+    console.error(error)
+  } finally {
+    myMonsters.loading = false
+  }
 }
 
 /**
@@ -820,6 +935,42 @@ const onWalletAssetChange = (assetAddress: string) => {
 }
 
 /**
+ * 设为当前对战元兽
+ */
+const setBattleMetamon = async (metamonId: number, showSuccessMsg = true) => {
+  try {
+    myMonsters.loading = true
+
+    const { code } = await formPost<{
+      code: RequestResultCode
+    }>('/metamon/isFightMonster', {
+      metamonId,
+      address: account,
+    })
+
+    if (code === 'SUCCESS') {
+      myMonsters.currentId = metamonId
+
+      // 刷新对战列表
+      await getBattleList()
+
+      showSuccessMsg &&
+        notification.success({
+          message: '设置成功',
+        })
+    } else {
+      notification.error({
+        message: '设为当前对战元兽失败',
+      })
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    myMonsters.loading = false
+  }
+}
+
+/**
  * 初始化数据
  */
 const initData = async () => {
@@ -827,7 +978,8 @@ const initData = async () => {
   getGameAssets()
   getWalletAssets()
   await getSelfMonster()
-  await getMonsters()
+  // 设置第一个元兽为当前对战元兽
+  // await setBattleMetamon(myMonsters.list[0].id, false)
 }
 
 initData()
