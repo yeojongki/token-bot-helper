@@ -85,83 +85,101 @@
       </a-row>
     </a-card>
 
-    <a-card class="mt-20 mb-20" header="操作">
-      <a-button
-        type="primary"
-        :disabled="!selection.length"
-        @click="buySelected"
-        >购买选中</a-button
+    <a-card class="mt-20 mb-20">
+      <template #title>搜索参数</template>
+      <a-form
+        :label-col="{ span: 8 }"
+        :wrapper-col="{ span: 15 }"
+        :model="searchParams"
+        ref="searchForm"
       >
-    </a-card>
+        <a-row>
+          <a-col :sm="24" :md="12" :lg="8">
+            <a-form-item label="状态">
+              <a-select v-model:value="searchParams.status">
+                <a-select-option value="">全部</a-select-option>
+                <a-select-option value="selling">出售中</a-select-option>
+                <a-select-option value="finish">已结束</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
 
-    <a-card class="mt-20 mb-20" header="搜索参数">
-      <a-form :model="searchParams" ref="searchForm">
-        <a-form-item label="状态">
-          <a-select v-model:value="searchParams.status">
-            <a-select-option value="">全部</a-select-option>
-            <a-select-option value="selling">出售中</a-select-option>
-            <a-select-option value="finish">已结束</a-select-option>
-          </a-select>
-        </a-form-item>
+          <a-col :sm="24" :md="12" :lg="8">
+            <a-form-item label="品质">
+              <a-select v-model:value="searchParams.props">
+                <a-select-option value="">全部</a-select-option>
+                <a-select-option value="1">传奇</a-select-option>
+                <a-select-option value="2">史诗</a-select-option>
+                <a-select-option value="3">精英</a-select-option>
+                <a-select-option value="4">优秀</a-select-option>
+                <a-select-option value="5">普通</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
 
-        <a-form-item label="品质">
-          <a-select v-model:value="searchParams.props">
-            <a-select-option value="">全部</a-select-option>
-            <a-select-option value="1">传奇</a-select-option>
-            <a-select-option value="2">史诗</a-select-option>
-            <a-select-option value="3">精英</a-select-option>
-            <a-select-option value="4">优秀</a-select-option>
-            <a-select-option value="5">普通</a-select-option>
-          </a-select>
-        </a-form-item>
+          <a-col :sm="24" :md="12" :lg="8">
+            <a-form-item label="角色">
+              <a-select v-model:value="searchParams.career">
+                <a-select-option value="">全部</a-select-option>
+                <a-select-option
+                  v-for="item in roleList"
+                  :label="item.name"
+                  :value="item.value"
+                  >{{ item.name }}</a-select-option
+                >
+              </a-select>
+            </a-form-item>
+          </a-col>
 
-        <a-form-item label="角色">
-          <a-select v-model:value="searchParams.career">
-            <a-select-option value="">全部</a-select-option>
-            <a-select-option
-              v-for="item in roleList"
-              :label="item.name"
-              :value="item.value"
-              >{{ item.name }}</a-select-option
-            >
-          </a-select>
-        </a-form-item>
+          <a-col :sm="24" :md="12" :lg="8">
+            <a-form-item label="排序属性">
+              <a-select v-model:value="searchParams.sort">
+                <a-select-option value="total">总属性值</a-select-option>
+                <a-select-option value="price">价格</a-select-option>
+                <a-select-option value="time">时间</a-select-option>
+                <a-select-option value="strength">力量</a-select-option>
+                <a-select-option value="agility">敏捷</a-select-option>
+                <a-select-option value="physique">体质</a-select-option>
+                <a-select-option value="volition">意志</a-select-option>
+                <a-select-option value="brains">智力</a-select-option>
+                <a-select-option value="charm">精神</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
 
-        <a-form-item label="排序属性">
-          <a-select v-model:value="searchParams.sort">
-            <a-select-option value="total">总属性值</a-select-option>
-            <a-select-option value="price">价格</a-select-option>
-            <a-select-option value="time">时间</a-select-option>
-            <a-select-option value="strength">力量</a-select-option>
-            <a-select-option value="agility">敏捷</a-select-option>
-            <a-select-option value="physique">体质</a-select-option>
-            <a-select-option value="volition">意志</a-select-option>
-            <a-select-option value="brains">智力</a-select-option>
-            <a-select-option value="charm">精神</a-select-option>
-          </a-select>
-        </a-form-item>
+          <a-col :sm="24" :md="12" :lg="8">
+            <a-form-item label="升降序">
+              <a-select v-model:value="searchParams.direction">
+                <a-select-option value="desc">降序</a-select-option>
+                <a-select-option value="asc">升序</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
 
-        <a-form-item label="升降序">
-          <a-select v-model:value="searchParams.direction">
-            <a-select-option value="desc">降序</a-select-option>
-            <a-select-option value="asc">升序</a-select-option>
-          </a-select>
-        </a-form-item>
+          <a-col :sm="24" :md="12" :lg="8">
+            <a-form-item label="分页数量">
+              <a-input-number
+                class="w-full"
+                v-model:value="searchParams.page_size"
+                :step="1"
+                :step-strictly="true"
+              ></a-input-number>
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <a-form-item label="分页数量">
-          <a-input-number
-            v-model:value="searchParams.page_size"
-            :step="1"
-            :step-strictly="true"
-          ></a-input-number>
-        </a-form-item>
-
-        <a-form-item>
-          <a-button type="primary" @click="saveSearchParams2Storage"
-            >保存参数</a-button
-          >
-          <a-button class="ml-10" @click="resetSearchForm">重置</a-button>
-        </a-form-item>
+        <a-row>
+          <a-col :span="24">
+            <a-form-item :label-col="{ span: 0 }" :wrapper-col="{ span: 24 }">
+              <div class="flex justify-center w-full">
+                <a-button type="primary" @click="saveSearchParams2Storage"
+                  >保存参数</a-button
+                >
+                <a-button class="ml-10" @click="resetSearchForm">重置</a-button>
+              </div>
+            </a-form-item>
+          </a-col>
+        </a-row>
       </a-form>
     </a-card>
 
@@ -173,7 +191,16 @@
       :api="getList"
       :is-marketing="true"
       :on-selectionChange="selectionChange"
-    ></player-table>
+    >
+      <template #title>
+        <a-button
+          type="primary"
+          :disabled="!selection.length"
+          @click="buySelected"
+          >购买选中</a-button
+        >
+      </template>
+    </player-table>
   </a-card>
 </template>
 
@@ -601,3 +628,7 @@ onUnmounted(() => {
   pollList.stop()
 })
 </script>
+
+<style lang="less" scoped>
+@import './style.less';
+</style>

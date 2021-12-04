@@ -70,7 +70,10 @@
     </el-table> -->
   </a-card>
 
-  <a-card class="page-bnx" :header="`未打工列表 (${noWorkingList.length})`">
+  <a-card class="page-bnx">
+    <template #title>
+      {{ `未打工列表 (${noWorkingList.length})` }}
+    </template>
     <div class="flex mb-10">
       <a-input
         v-model="transferTo"
@@ -117,7 +120,8 @@
     ></player-table>
   </a-card>
 
-  <a-card class="page-bnx" header="工具">
+  <a-card class="page-bnx">
+    <template #title>工具</template>
     <div class="flex">
       <!-- <a-input-number
         v-model:value="batchNewPlayerCount"
@@ -812,3 +816,7 @@ const requestList = () => {
   workingTableRef.value?.refresh()
 }
 </script>
+
+<style lang="less" scoped>
+@import './style.less';
+</style>

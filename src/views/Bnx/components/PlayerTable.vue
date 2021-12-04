@@ -1,6 +1,6 @@
 <template>
   <a-table
-    row-key="tokenId"
+    :row-key="isMarketing ? 'order_id' : 'tokenId'"
     :loading="loading"
     :bordered="true"
     :pagination="false"
@@ -9,6 +9,9 @@
     :scroll="{ x: 'max-content', y: 500 }"
     :rowSelection="rowSelection"
   >
+    <template #title v-if="!!slots.title">
+      <slot name="title"></slot>
+    </template>
     <a-table-column data-index="tokenId" title="Token ID" :width="120">
       <template #default="{ record }">
         <div @click="copyId(record.tokenId)" class="id-column">
@@ -248,12 +251,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, useSlots } from 'vue'
 import { useBnxStore } from '@/store/bnx'
 import copyText from '@/utils/copyText'
 import { contractAddress, getUpgradeCostBnx } from '../common'
 import type { Hero } from '../common'
 import type { TableProps } from 'ant-design-vue'
+
+const slots = useSlots()
 
 const props = withDefaults(
   defineProps<{
@@ -352,7 +357,7 @@ function onRoleFilter(value: string, record: any) {
  * 排序
  */
 function sorter(a: any, b: any, key: string) {
-  return a[key] - b[key]
+  return Number(a[key]) - Number(b[key])
 }
 
 const rowSelection: TableProps['rowSelection'] = {
@@ -374,7 +379,6 @@ if (props.initDataOnSetup) {
 </script>
 
 <style lang="less" scoped>
-@import '../style.less';
 .advance-main-prop {
   font-size: 20px;
   color: @primary-color;
