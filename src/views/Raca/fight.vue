@@ -2,6 +2,7 @@
   <div class="p-15">
     <!-- 游戏背包资产表格 -->
     <a-table
+      :scroll="{ x: 'max-content' }"
       class="mb-20"
       row-key="id"
       :loading="gameAssets.loading"
@@ -11,12 +12,16 @@
       :data-source="gameAssets.list"
     >
       <template #title>
-        <span class="font-bold">游戏背包资产</span>
+        <div class="flex justify-between">
+          <span class="font-bold">游戏背包资产</span>
+          <div>uRACA授权数量: {{ tokenBalance.uRACAAllowance }}</div>
+        </div>
       </template>
     </a-table>
 
     <!-- 钱包资产表格 -->
     <a-table
+      :scroll="{ x: 'max-content' }"
       class="mb-20"
       row-key="id"
       :loading="walletAssets.loading"
@@ -26,36 +31,43 @@
       :columns="walletAssets.columns"
     >
       <template #title>
-        <div class="flex">
-          <div class="font-bold mr-10">钱包资产:</div>
-          <div
-            @click="onWalletAssetChange(address.METAMON_EGG_ADDRESS)"
-            :class="{
-              'nav-item': true,
-              'is-active':
-                walletAssets.activeAsset === address.METAMON_EGG_ADDRESS,
-            }"
-          >
-            蛋
+        <div class="flex justify-between">
+          <div class="flex">
+            <div class="font-bold mr-10">钱包资产:</div>
+            <div
+              @click="onWalletAssetChange(address.METAMON_EGG_ADDRESS)"
+              :class="{
+                'nav-item': true,
+                'is-active':
+                  walletAssets.activeAsset === address.METAMON_EGG_ADDRESS,
+              }"
+            >
+              蛋
+            </div>
+            <div
+              @click="onWalletAssetChange(address.N_METAMON_ADDRESS)"
+              :class="{
+                'nav-item': true,
+                'is-active':
+                  walletAssets.activeAsset === address.N_METAMON_ADDRESS,
+              }"
+            >
+              N元兽
+            </div>
+            <div
+              @click="onWalletAssetChange(address.Potion_ADDRESS)"
+              :class="{
+                'nav-item': true,
+                'is-active':
+                  walletAssets.activeAsset === address.Potion_ADDRESS,
+              }"
+            >
+              药水
+            </div>
           </div>
-          <div
-            @click="onWalletAssetChange(address.N_METAMON_ADDRESS)"
-            :class="{
-              'nav-item': true,
-              'is-active':
-                walletAssets.activeAsset === address.N_METAMON_ADDRESS,
-            }"
-          >
-            N元兽
-          </div>
-          <div
-            @click="onWalletAssetChange(address.Potion_ADDRESS)"
-            :class="{
-              'nav-item': true,
-              'is-active': walletAssets.activeAsset === address.Potion_ADDRESS,
-            }"
-          >
-            药水
+
+          <div class="flex items-center">
+            <div class="mr-10">RACA: {{ tokenBalance.raca }}</div>
           </div>
         </div>
       </template>
@@ -71,9 +83,9 @@
       <a-form>
         <a-form-item label="名称">{{ currentDepositInfo.name }}</a-form-item>
         <a-form-item name="count" label="数量">
-          <!-- TODO :max= -->
           <a-input-number
             :min="1"
+            :max="currentDepositInfo.count"
             v-model:value="currentDepositInfo.count"
           ></a-input-number>
         </a-form-item>
@@ -82,6 +94,7 @@
 
     <!-- 我的元兽列表 -->
     <a-table
+      :scroll="{ x: 'max-content' }"
       class="mb-20"
       row-key="id"
       :loading="myMonsters.loading"
@@ -91,12 +104,13 @@
       :columns="monsterColumns"
     >
       <template #title>
-        <span class="font-bold">我的元兽</span>
+        <span class="font-bold mr-10">我的元兽</span>
       </template>
     </a-table>
 
     <!-- 对战元兽列表 -->
-    <a-table
+    <!-- <a-table
+    :scroll="{ x: 'max-content' }"
       row-key="id"
       :loading="battleList.loading"
       :bordered="true"
@@ -106,9 +120,8 @@
     >
       <template #title>
         <span class="font-bold">对战元兽</span>
-        <!-- <async-button :api="batchFightAll">战斗所有次数</async-button> -->
       </template>
-    </a-table>
+    </a-table> -->
   </div>
 </template>
 
@@ -133,6 +146,7 @@ import {
 } from './common'
 import { computed, reactive } from 'vue'
 import { execWithSleep, withPoll } from '@/utils'
+import ERC20_ABI from '@/constants/erc20'
 
 // const imgs = {
 //   Potion:
@@ -153,6 +167,7 @@ const { account, wallet } = useActiveProvider()
  * 用到的合约
  */
 const contracts = {
+  [address.RACA_ADDRESS]: new Contract(address.RACA_ADDRESS, ERC20_ABI, wallet),
   [address.METAMON_EGG_ADDRESS]: new Contract(
     address.METAMON_EGG_ADDRESS,
     NFTABI,
@@ -177,6 +192,10 @@ const contracts = {
 
 const [sign, setSign] = useRef(localStorage.getItem(RACA_SIGN_KEY) || '')
 const [token, setToken] = useRef(localStorage.getItem(RACA_TOKEN_KEY) || '')
+const tokenBalance = reactive({
+  raca: 0,
+  uRACAAllowance: 0,
+})
 
 /**
  * 资产类型 map
@@ -185,7 +204,7 @@ const assetTypeMap = {
   0: '元兽',
   1: '元兽蛋碎片',
   2: '药水',
-  5: 'raca',
+  5: 'uRACA',
   6: '元兽蛋',
 }
 
@@ -286,6 +305,10 @@ const monsterColumns = [
     dataIndex: 'exp',
   },
   {
+    title: '升级所需经验',
+    dataIndex: 'expMax',
+  },
+  {
     title: '能否升级',
     dataIndex: 'monsterUpdate',
     customRender({ record }: any) {
@@ -318,11 +341,16 @@ const monsterColumns = [
         <>
           <Button
             type="link"
+            disabled={!canBatchFightAll.value}
             onClick={() => batchFightAll(record.id, record.tear)}
           >
             战斗所有次数
           </Button>
-          <Button type="link" onClick={() => updateMonster(record.id)}>
+          <Button
+            type="link"
+            disabled={!canUpgrade.value}
+            onClick={() => updateMonster(record.id)}
+          >
             升级
           </Button>
         </>
@@ -390,10 +418,51 @@ const gameAssets = reactive({
           )
         }
 
+        if (record.bpType === 5) {
+          return (
+            <>
+              <Button
+                type="primary"
+                disabled={tokenBalance.raca <= 0}
+                onClick={onRechargeURACA}
+              >
+                充值
+              </Button>
+              <Button type="primary" class="ml-10" onClick={approveURACA}>
+                授权
+              </Button>
+            </>
+          )
+        }
+
         return ''
       },
     },
   ],
+})
+
+/**
+ * 能否战斗所有次数
+ */
+const canBatchFightAll = computed(() => {
+  const uRaca = gameAssets.list.find(item => item.bpType === 5)
+  if (uRaca && uRaca.bpNum >= 1000) {
+    return true
+  }
+
+  return false
+})
+
+/**
+ * 能否升级
+ */
+const canUpgrade = computed(() => {
+  const postion = gameAssets.list.find(item => item.bpType === 2)
+  if (postion && postion.bpNum >= 1) {
+    return true
+  }
+
+  return false
 })
 
 /**
@@ -810,25 +879,32 @@ const handleDeposit = async () => {
 
       // 交易哈希
       let txHash = ''
+      let tx: any = null
+      const gas = {
+        gasLimit: 60000,
+        gasPrice: utils.parseUnits(`6`, 'gwei'),
+      }
 
       // TODO 其他类型
       switch (payType) {
         // 药水
         case 2:
-          const tx = await contract.deposit1155(
+          tx = await contract.deposit1155(
             address.Potion_ADDRESS,
             0,
             count,
             orderId,
-            {
-              gasLimit: 50000,
-              gasPrice: utils.parseUnits(`6`, 'gwei'),
-            },
+            gas,
           )
-          txHash = tx.hash
+          txHash = tx!.hash
+          break
 
-          await tx.wait()
-
+        case 1:
+          tx = await contract.depositRACA(
+            utils.parseUnits(count + ''),
+            orderId,
+            gas,
+          )
           break
 
         default:
@@ -839,8 +915,12 @@ const handleDeposit = async () => {
           break
       }
 
+      if (tx) {
+        await tx.wait()
+      }
+
       if (txHash) {
-        await withPoll(() => checkDepositOrderStatus(txHash))
+        await withPoll(async () => checkDepositOrderStatus(txHash))
 
         notification.success({
           message: `充值成功`,
@@ -865,7 +945,7 @@ const handleDeposit = async () => {
 }
 
 /**
- * TODO 碎片合成元兽蛋
+ * 碎片合成元兽蛋
  */
 const composeMonsterEgg = async () => {
   try {
@@ -971,12 +1051,76 @@ const setBattleMetamon = async (metamonId: number, showSuccessMsg = true) => {
 }
 
 /**
+ * 充值 uRACA 显示弹窗
+ */
+const onRechargeURACA = () => {
+  Object.assign(currentDepositInfo, {
+    payType: 1,
+    name: 'uRACA',
+    count: tokenBalance.raca,
+  })
+  currentDepositInfo.modalVisible = true
+}
+
+/**
+ * 获取 uRACA 授权数量
+ */
+const getAllowanceURACA = async () => {
+  const allowance = await contracts[address.RACA_ADDRESS].allowance(
+    wallet.address,
+    address.METAMON_WALLET,
+  )
+  tokenBalance.uRACAAllowance = parseFloat(utils.formatEther(allowance))
+}
+
+/**
+ * 授权 uRACA
+ */
+const approveURACA = async () => {
+  const approveCount = '5000'
+  if (tokenBalance.raca < Number(approveCount)) {
+    message.error(`RACA 余额不足${approveCount}`)
+    return
+  }
+
+  await contracts[address.RACA_ADDRESS].approve(
+    address.METAMON_WALLET,
+    // TODO 先写死 5000
+    utils.parseUnits(approveCount),
+  )
+
+  getBalanceAll()
+}
+
+/**
+ * 获取 RACA 余额
+ */
+const getRACABalance = async () => {
+  const balance = await new Contract(
+    address.RACA_ADDRESS,
+    ERC20_ABI,
+    wallet,
+  ).balanceOf(wallet.address)
+
+  tokenBalance.raca = +utils.formatEther(balance)
+}
+
+/**
+ * 获取所有余额
+ */
+const getBalanceAll = () => {
+  getRACABalance()
+  getAllowanceURACA()
+  getGameAssets()
+  getWalletAssets()
+}
+
+/**
  * 初始化数据
  */
 const initData = async () => {
   await login()
-  getGameAssets()
-  getWalletAssets()
+  getBalanceAll()
   await getSelfMonster()
   // 设置第一个元兽为当前对战元兽
   // await setBattleMetamon(myMonsters.list[0].id, false)

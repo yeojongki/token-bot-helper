@@ -55,7 +55,7 @@ export interface GameAsset {
    * 2
    * 3
    * 4
-   * 5 raca
+   * 5 uRACA
    * 6 元兽蛋
    */
   bpType: number
