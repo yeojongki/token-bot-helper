@@ -72,7 +72,7 @@
 
   <a-card class="page-bnx">
     <template #title>
-      {{ `未打工列表 (${noWorkingList.length})` }}
+      {{ `未打工列表 (${noWorkingListLength})` }}
     </template>
     <div class="flex mb-10">
       <a-input
@@ -228,9 +228,9 @@ const workingSelectionChange = (val: WorkingHero[]) => {
 }
 
 /**
- * 未打工列表
+ * 未打工列表数量
  */
-const noWorkingList: Ref<Hero[]> = ref([])
+const noWorkingListLength = ref(0)
 
 /**
  * 未打工勾选列表
@@ -511,6 +511,7 @@ async function getPlayersNoWorking() {
     promiseDatas.push(getPlayerInfo(i, contracts.RangerAddress))
   }
 
+  noWorkingListLength.value = promiseDatas.length
   return await Promise.all(promiseDatas)
 }
 

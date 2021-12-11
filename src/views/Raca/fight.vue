@@ -73,20 +73,22 @@
       </template>
     </a-table>
 
-    <!-- 钱包充值到游戏弹窗 -->
+    <!-- 提现/充值到游戏弹窗 -->
     <a-modal
-      title="充值到游戏中"
-      @ok="handleDeposit"
+      :title="`${
+        currentTradeInfo.type === 'deposit' ? '充值' : '提现'
+      }到游戏中`"
+      @ok="depositOrWithdraw"
       :ok-button-props="{ loading: walletAssets.submitLoading }"
-      v-model:visible="currentDepositInfo.modalVisible"
+      v-model:visible="currentTradeInfo.modalVisible"
     >
       <a-form>
-        <a-form-item label="名称">{{ currentDepositInfo.name }}</a-form-item>
+        <a-form-item label="名称">{{ currentTradeInfo.name }}</a-form-item>
         <a-form-item name="count" label="数量">
           <a-input-number
             :min="1"
-            :max="currentDepositInfo.count"
-            v-model:value="currentDepositInfo.count"
+            :max="currentTradeInfo.count"
+            v-model:value="currentTradeInfo.count"
           ></a-input-number>
         </a-form-item>
       </a-form>
@@ -200,7 +202,7 @@ const tokenBalance = reactive({
 /**
  * 资产类型 map
  */
-const assetTypeMap = {
+const gameAssetTypeMap = {
   0: '元兽',
   1: '元兽蛋碎片',
   2: '药水',
@@ -218,9 +220,9 @@ const assetAddressMap = {
 }
 
 /**
- * 资产 payType地址 map
+ * 游戏资产 payType地址 map
  */
-const assetPayTypeMap = {
+const gameAssetPayTypeMap = {
   [address.Potion_ADDRESS]: 2,
   [address.METAMON_EGG_ADDRESS]: 5,
 }
@@ -229,7 +231,7 @@ const assetPayTypeMap = {
  * 根据类型格式化资产名称
  */
 const formatAssetsNameByType = (type: number) =>
-  assetTypeMap[type as keyof typeof assetTypeMap]
+  gameAssetTypeMap[type as keyof typeof gameAssetTypeMap]
 
 /**
  * 钱包资产数据
@@ -406,7 +408,9 @@ const gameAssets = reactive({
       title: '操作',
       dataIndex: 'action',
       customRender({ record }: { record: GameAsset }) {
-        if (record.bpType === 1) {
+        const { bpType, bpNum } = record
+        // 元兽蛋碎片
+        if (bpType === 1) {
           return (
             <Button
               type="primary"
@@ -418,7 +422,21 @@ const gameAssets = reactive({
           )
         }
 
-        if (record.bpType === 5) {
+        // 元兽蛋
+        if (bpType === 6) {
+          return (
+            <Button
+              type="primary"
+              disabled={bpNum <= 0}
+              onClick={() => onWithdraw(record, -5)}
+            >
+              提现
+            </Button>
+          )
+        }
+
+        // uRACA
+        if (bpType === 5) {
           return (
             <>
               <Button
@@ -480,16 +498,20 @@ const canComposeMetamonEgg = computed(() => {
 /**
  * 当前钱包资产数据
  */
-const currentDepositInfo = reactive({
+const currentTradeInfo = reactive({
   modalVisible: false,
   /**
-   * 充值数量
+   * 数量
    */
   count: 1,
   tokenIds: '',
-  payType: -1,
+  payType: -100,
   rartity: 1,
   name: '',
+  /**
+   * 类型 充值或提现
+   */
+  type: 'deposit' as 'deposit' | 'withdraw',
 })
 
 /**
@@ -753,7 +775,7 @@ const getWalletAssets = async () => {
     }
 
     const count = Number(await assetContract.balanceOf(wallet.address, 0))
-    const payType = assetPayTypeMap[walletAssets.activeAsset]
+    const payType = gameAssetPayTypeMap[walletAssets.activeAsset]
 
     if (!payType) {
       notification.error({
@@ -823,11 +845,23 @@ const onShelf = async (item: any) => {
 }
 
 /**
- * 点击表格中某一项进行充值
+ * 充值到游戏资产
  */
 const onDeposit = (item: WalletAsset) => {
-  Object.assign(currentDepositInfo, item)
-  currentDepositInfo.modalVisible = true
+  Object.assign(currentTradeInfo, item)
+  currentTradeInfo.type = 'deposit'
+  currentTradeInfo.modalVisible = true
+}
+
+/**
+ * 提现到钱包资产
+ */
+const onWithdraw = (item: GameAsset, payType: number) => {
+  Object.assign(currentTradeInfo, item)
+  currentTradeInfo.name = formatAssetsNameByType(item.bpType)
+  currentTradeInfo.payType = payType
+  currentTradeInfo.type = 'withdraw'
+  currentTradeInfo.modalVisible = true
 }
 
 /**
@@ -852,96 +886,196 @@ const checkDepositOrderStatus = async (txHash: string) => {
   return true
 }
 
+// {
+//     "data": [],
+//     "messages": "0x2778eed812e678c1eb79e01c1a0a32d3aa8ddb460da96185b666e890649aa210",
+//     "num": null,
+//     "orderId": "1469610253066701568",
+//     "signatures": "0xd3cea669db38ea94c81622e92f6fe077f130a631efad6336330d58bc52e11a247d9d68f00312219555521b2c40aec0f93c55a46b0fcc47fe0ca42646b77233301c"
+// }
+
 /**
- * 将钱包资产充值到游戏中
+ * 获取交易订单信息
  */
-const handleDeposit = async () => {
-  walletAssets.submitLoading = true
+const _getTradeOrder = async () => {
   try {
-    const { payType, count, tokenIds = '', rartity = 1 } = currentDepositInfo
-    const { code, data: orderId } = await formPost<{
-      code: RequestResultCode
-      data: string
-    }>('/metamon/transferInBySymbol', {
+    const {
+      payType,
+      count,
+      tokenIds = '',
+      rartity = 1,
+      type,
+    } = currentTradeInfo
+
+    const body = {
       payType,
       tokenIds,
       num: count,
       rartity,
       address: account,
+    }
+
+    const { code, data } = await formPost<{
+      code: RequestResultCode
+      data: any
+    }>(
+      `/metamon/${
+        type === 'deposit' ? 'transferInBySymbol' : 'transferOutBySymbol'
+      }`,
+      body,
+    )
+
+    return {
+      code,
+      data,
+    }
+  } catch (error) {
+    notification.error({
+      message: `${currentTradeInfo.type === 'deposit' ? '充值' : '提现'}失败`,
     })
+    return {}
+  }
+}
 
-    if (code === 'SUCCESS') {
-      const contract = new Contract(
-        address.METAMON_WALLET,
-        metamonWalletABI,
-        wallet,
-      )
+/**
+ * 充值或提现资产
+ */
+const depositOrWithdraw = async () => {
+  walletAssets.submitLoading = true
+  const { payType, count, tokenIds = '', rartity = 1, type } = currentTradeInfo
+  // 提现 or 充值
+  const isDeposit = type === 'deposit'
+  const typeText = isDeposit ? '充值' : '提现'
 
-      // 交易哈希
-      let txHash = ''
-      let tx: any = null
-      const gas = {
-        gasLimit: 60000,
-        gasPrice: utils.parseUnits(`6`, 'gwei'),
-      }
+  // 提现返回
+  // {
+  //     "code": "SUCCESS",
+  //     "data": {
+  //         "data": [],
+  //         "messages": "0x7c32bfd77f3affd7b5015045e574c80b794e06d556235e6a764ddd2258922b78",
+  //         "num": null,
+  //         "orderId": "1469564480438405376",
+  //         "signatures": "0x30b45c744c0d42a322fecdd1ccfe96b9983a8c1cff62e0862779c65eb45f623305313858baba471419b195089b45fd0909979e73cc4e9949759006a351c9f0081b"
+  //     },
+  //     "message": "",
+  //     "result": 1
+  // }
+  const { data } = await _getTradeOrder()
+  const orderId = isDeposit ? data : data.orderId
+  const signatures = isDeposit ? undefined : data.signatures
+  const messages = isDeposit ? undefined : data.messages
 
-      // TODO 其他类型
-      switch (payType) {
-        // 药水
-        case 2:
-          tx = await contract.deposit1155(
-            address.Potion_ADDRESS,
-            0,
-            count,
-            orderId,
-            gas,
-          )
-          txHash = tx!.hash
-          break
+  if (!orderId) {
+    notification.error({
+      message: `orderId 获取失败`,
+    })
+    return
+  }
 
-        case 1:
-          tx = await contract.depositRACA(
-            utils.parseUnits(count + ''),
-            orderId,
-            gas,
-          )
-          break
+  try {
+    const contract = new Contract(
+      isDeposit ? address.METAMON_WALLET : address.METAMON_WALLET_V2,
+      metamonWalletABI,
+      wallet,
+    )
 
-        default:
-          // TODO 完善其他类型充值
-          notification.error({
-            message: `${payType} 类型充值暂未实现`,
-          })
-          break
-      }
+    let tx: any = null
+    const gas = {
+      gasLimit: 60000,
+      gasPrice: utils.parseUnits(`6`, 'gwei'),
+    }
 
-      if (tx) {
-        await tx.wait()
-      }
+    // TODO 其他类型
+    switch (payType) {
+      // 药水
+      case 2:
+        tx = await contract.deposit1155(
+          address.Potion_ADDRESS,
+          0,
+          count,
+          orderId,
+          // gas,
+        )
+        break
 
-      if (txHash) {
-        await withPoll(async () => checkDepositOrderStatus(txHash))
+      case 1:
+        tx = await contract.depositRACA(
+          utils.parseUnits(count + ''),
+          orderId,
+          // gas,
+        )
+        break
 
-        notification.success({
-          message: `充值成功`,
+      case -5:
+        tx = await contract.withdraw1155(
+          address.METAMON_EGG_ADDRESS,
+          0,
+          count,
+          messages,
+          signatures,
+          orderId,
+          // gas,
+        )
+
+        break
+
+      default:
+        // TODO 完善其他类型充值
+        notification.error({
+          message: `${payType} 类型${typeText}暂未实现`,
         })
+        break
+    }
 
-        // 弹窗关闭
-        currentDepositInfo.modalVisible = false
-        // 刷新列表
-        getWalletAssets()
-        getGameAssets()
-      }
-    } else {
-      notification.error({
-        message: '充值失败',
+    if (tx) {
+      await tx.wait()
+      await withPoll(async () => checkDepositOrderStatus(tx.hash))
+
+      notification.success({
+        message: `${typeText}成功`,
       })
+
+      // 弹窗关闭
+      currentTradeInfo.modalVisible = false
+      // 刷新列表
+      getWalletAssets()
+      getGameAssets()
     }
   } catch (error) {
     console.error(error)
+
+    // 取消订单
+    if (!isDeposit) {
+      cancelWithdrawOrder(orderId, messages)
+    }
   } finally {
     walletAssets.submitLoading = false
   }
+}
+
+/**
+ * 取消提现订单
+ */
+const cancelWithdrawOrder = async (orderId: string, hash: string) => {
+  try {
+    const { code } = await formPost<{ code: RequestResultCode }>(
+      '/metamon/transferOutCancel',
+      {
+        address: wallet.address,
+        orderId,
+        hash,
+      },
+    )
+
+    if (code !== 'SUCCESS') {
+      const msg = '取消订单失败'
+      notification.error({
+        message: msg,
+      })
+      console.error(msg)
+      console.error({ orderId, hash })
+    }
+  } catch (error) {}
 }
 
 /**
@@ -986,7 +1120,7 @@ const batchFightAll = async (metamonId: number, tear: number) => {
 
     const datas = await Promise.all(
       Array.from(Array(tear), (_, k) => k).map(() =>
-        execWithSleep(async () => await fight(minimumId, false), 150),
+        execWithSleep(async () => await fight(minimumId, false), 300),
       ),
     )
 
@@ -1054,12 +1188,12 @@ const setBattleMetamon = async (metamonId: number, showSuccessMsg = true) => {
  * 充值 uRACA 显示弹窗
  */
 const onRechargeURACA = () => {
-  Object.assign(currentDepositInfo, {
+  Object.assign(currentTradeInfo, {
     payType: 1,
     name: 'uRACA',
     count: tokenBalance.raca,
   })
-  currentDepositInfo.modalVisible = true
+  currentTradeInfo.modalVisible = true
 }
 
 /**
@@ -1077,7 +1211,7 @@ const getAllowanceURACA = async () => {
  * 授权 uRACA
  */
 const approveURACA = async () => {
-  const approveCount = '5000'
+  const approveCount = '6000'
   if (tokenBalance.raca < Number(approveCount)) {
     message.error(`RACA 余额不足${approveCount}`)
     return
@@ -1122,6 +1256,7 @@ const initData = async () => {
   await login()
   getBalanceAll()
   await getSelfMonster()
+
   // 设置第一个元兽为当前对战元兽
   // await setBattleMetamon(myMonsters.list[0].id, false)
 }
