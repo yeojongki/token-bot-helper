@@ -85,7 +85,7 @@ export type RequestResultCode = 'SUCCESS' | 'FAIL'
  * 用到的合约地址
  */
 export const address = {
-  FIX_PRICE_SELL_ADDRESS: '0x7b4452dd6c38597fa9364ac8905c27ea44425832',
+  FIX_PRICE_SELL_ADDRESS: '0xE97Fdca0A3Fc76b3046aE496C1502c9d8dFEf6fc',
   RACA_ADDRESS: '0x12BB890508c125661E03b09EC06E404bc9289040',
   N_METAMON_ADDRESS: '0xF24Bf668Aa087990f1d40aBAbF841456E771913c',
   R_METAMON_ADDRESS: '0x982B5345D0f213ecb2a8e6e24336909f59B1d6E3',
@@ -98,6 +98,53 @@ export const address = {
   METAMON_WALLET_V2: '0x0658A6934aEE5F3479f1FE19f8A56F4853901fec',
   fungibleTokenBundle: '0x83A0F9139Dcf4EDa6668E91017E17887802234a5',
 }
+
+/**
+ * 资产类型 map
+ */
+const gameAssetTypeMap = {
+  0: '元兽',
+  1: '元兽蛋碎片',
+  2: '药水',
+  5: 'uRACA',
+  6: '元兽蛋',
+}
+
+/**
+ * 资产地址 map
+ */
+export const assetAddressMap = {
+  [address.N_METAMON_ADDRESS]: 'N元兽',
+  [address.Potion_ADDRESS]: '药水',
+  [address.METAMON_EGG_ADDRESS]: '元兽蛋',
+}
+
+/**
+ * 游戏资产 payType地址 map
+ */
+export const gameAssetPayTypeMap = {
+  [address.Potion_ADDRESS]: 2,
+  [address.METAMON_EGG_ADDRESS]: 5,
+}
+
+export const gameAssetPayTypeNameMap = {
+  2: '药水',
+  5: '元兽蛋',
+}
+
+/**
+ * 根据类型格式化资产名称
+ */
+export const formatGameAssetNameByType = (type: number) =>
+  gameAssetTypeMap[type as keyof typeof gameAssetTypeMap]
+
+/**
+ * 根据类型格式化资产名称
+ * @param type
+ * @returns
+ */
+export const formatWalletAssetNameByType = (type: number) =>
+  gameAssetPayTypeNameMap[type as keyof typeof gameAssetPayTypeNameMap]
 
 /**
  * 获取对战列表中最低属性的元兽 id

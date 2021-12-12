@@ -94,6 +94,34 @@
       </a-form>
     </a-modal>
 
+    <!-- 上架到交易市场弹窗 -->
+    <a-modal
+      title="上架到交易市场"
+      @ok="handleShelf"
+      :ok-button-props="{ loading: shelfInfo.submitLoading }"
+      v-model:visible="shelfInfo.modalVisible"
+    >
+      <a-form>
+        <a-form-item label="名称">{{ shelfInfo.name }}</a-form-item>
+        <a-form-item label="数量">
+          <a-input-number
+            :step="1"
+            :min="1"
+            :max="shelfInfo.count"
+            v-model:value="shelfInfo.count"
+          ></a-input-number>
+        </a-form-item>
+        <a-form-item label="价格(RACA)">
+          <a-input-number
+            :step="1"
+            :min="1"
+            :max="shelfInfo.price"
+            v-model:value="shelfInfo.price"
+          ></a-input-number>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
     <!-- 我的元兽列表 -->
     <a-table
       :scroll="{ x: 'max-content' }"
@@ -140,7 +168,11 @@ import fungibleTokenABI from './abi/fungibleToken'
 import metamonWalletABI from './abi/metamonWallet'
 import {
   address,
+  assetAddressMap,
+  formatGameAssetNameByType,
+  formatWalletAssetNameByType,
   GameAsset,
+  gameAssetPayTypeMap,
   getMinimumIdFormList,
   Monster,
   RequestResultCode,
@@ -149,19 +181,6 @@ import {
 import { computed, reactive } from 'vue'
 import { execWithSleep, withPoll } from '@/utils'
 import ERC20_ABI from '@/constants/erc20'
-
-// const imgs = {
-//   Potion:
-//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_potion.png',
-//   'Metamon Egg':
-//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_egg.png',
-//   'Yellow Diamond':
-//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_yellow_diamond.png',
-//   'Purple Diamond':
-//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_purple_diamond.png',
-//   'Black Diamond':
-//     'https://racawebsource.s3-accelerate.amazonaws.com/assets/1155_img/img_black_diamond.png',
-// }
 
 const { account, wallet } = useActiveProvider()
 
@@ -194,44 +213,26 @@ const contracts = {
 
 const [sign, setSign] = useRef(localStorage.getItem(RACA_SIGN_KEY) || '')
 const [token, setToken] = useRef(localStorage.getItem(RACA_TOKEN_KEY) || '')
+
+/**
+ * 余额
+ */
 const tokenBalance = reactive({
   raca: 0,
   uRACAAllowance: 0,
 })
 
 /**
- * 资产类型 map
+ * 上架信息
  */
-const gameAssetTypeMap = {
-  0: '元兽',
-  1: '元兽蛋碎片',
-  2: '药水',
-  5: 'uRACA',
-  6: '元兽蛋',
-}
-
-/**
- * 资产地址 map
- */
-const assetAddressMap = {
-  [address.N_METAMON_ADDRESS]: 'N元兽',
-  [address.Potion_ADDRESS]: '药水',
-  [address.METAMON_EGG_ADDRESS]: '元兽蛋',
-}
-
-/**
- * 游戏资产 payType地址 map
- */
-const gameAssetPayTypeMap = {
-  [address.Potion_ADDRESS]: 2,
-  [address.METAMON_EGG_ADDRESS]: 5,
-}
-
-/**
- * 根据类型格式化资产名称
- */
-const formatAssetsNameByType = (type: number) =>
-  gameAssetTypeMap[type as keyof typeof gameAssetTypeMap]
+const shelfInfo = reactive({
+  modalVisible: false,
+  submitLoading: false,
+  name: '',
+  count: 0,
+  price: 30000,
+  payType: -100,
+})
 
 /**
  * 钱包资产数据
@@ -240,7 +241,7 @@ const walletAssets = reactive({
   assets: [] as WalletAsset[],
   loading: false,
   submitLoading: false,
-  activeAsset: address.Potion_ADDRESS,
+  activeAsset: address.METAMON_EGG_ADDRESS,
   columns: [
     {
       title: '名称',
@@ -397,7 +398,7 @@ const gameAssets = reactive({
       title: '名称',
       dataIndex: 'bpType',
       customRender({ record }: { record: GameAsset }) {
-        return formatAssetsNameByType(record.bpType)
+        return formatGameAssetNameByType(record.bpType)
       },
     },
     {
@@ -826,22 +827,52 @@ const getWalletAssets = async () => {
 }
 
 /**
- * TODO 上架
+ * 上架
  */
-const onShelf = async (item: any) => {
-  notification.error({
-    message: `TODO 未实现`,
-  })
-  // const count = 1
-  // await contracts[address.FIX_PRICE_SELL_ADDRESS].sell(
-  //   item.nft_address,
-  //   `${item.token_id}`,
-  //   `${count}`,
-  //   address.RACA_ADDRESS,
-  //   utils.parseEther(`${920000}`),
-  //   0,
-  //   0,
-  // )
+const handleShelf = async () => {
+  try {
+    shelfInfo.submitLoading = true
+
+    const { payType, count, price } = shelfInfo
+    let nftAddress = ''
+    let tokenId = ''
+
+    if (payType === 5) {
+      tokenId = '0'
+      nftAddress = address.METAMON_EGG_ADDRESS
+    }
+
+    if (!tokenId || !nftAddress) {
+      notification.error({
+        message: `TODO ${formatWalletAssetNameByType(payType)}上架未实现`,
+      })
+    }
+
+    const tx = await contracts[address.FIX_PRICE_SELL_ADDRESS].sell(
+      nftAddress,
+      `${tokenId}`,
+      `${count}`,
+      address.RACA_ADDRESS,
+      utils.parseEther(`${price * count}`),
+      0,
+      0,
+    )
+
+    await tx.wait()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    shelfInfo.submitLoading = false
+  }
+}
+
+/**
+ * 上架前处理
+ */
+const onShelf = async (item: WalletAsset) => {
+  Object.assign(shelfInfo, item)
+  shelfInfo.name = formatWalletAssetNameByType(item.payType) || '未知'
+  shelfInfo.modalVisible = true
 }
 
 /**
@@ -858,7 +889,7 @@ const onDeposit = (item: WalletAsset) => {
  */
 const onWithdraw = (item: GameAsset, payType: number) => {
   Object.assign(currentTradeInfo, item)
-  currentTradeInfo.name = formatAssetsNameByType(item.bpType)
+  currentTradeInfo.name = formatGameAssetNameByType(item.bpType)
   currentTradeInfo.payType = payType
   currentTradeInfo.type = 'withdraw'
   currentTradeInfo.modalVisible = true
@@ -1029,7 +1060,7 @@ const depositOrWithdraw = async () => {
 
     if (tx) {
       await tx.wait()
-      await withPoll(async () => checkDepositOrderStatus(tx.hash))
+      await withPoll(async () => await checkDepositOrderStatus(tx.hash))
 
       notification.success({
         message: `${typeText}成功`,
