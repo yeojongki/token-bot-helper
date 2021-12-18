@@ -111,7 +111,7 @@
             v-model:value="shelfInfo.count"
           ></a-input-number>
         </a-form-item>
-        <a-form-item label="价格(RACA)">
+        <a-form-item label="单价(RACA)">
           <a-input-number
             :step="1"
             :min="1"
@@ -344,14 +344,14 @@ const monsterColumns = [
         <>
           <Button
             type="link"
-            disabled={!canBatchFightAll.value}
+            disabled={batchFightDisabled(record.tear)}
             onClick={() => batchFightAll(record.id, record.tear)}
           >
             战斗所有次数
           </Button>
           <Button
             type="link"
-            disabled={!canUpgrade.value}
+            disabled={batchFightDisabled(record.tear)}
             onClick={() => updateMonster(record.id)}
           >
             升级
@@ -461,16 +461,21 @@ const gameAssets = reactive({
 })
 
 /**
- * 能否战斗所有次数
+ * 获取游戏 uRaca 数量
  */
-const canBatchFightAll = computed(() => {
+const uRacaNum = computed(() => {
   const uRaca = gameAssets.list.find(item => item.bpType === 5)
-  if (uRaca && uRaca.bpNum >= 1000) {
-    return true
+  if (uRaca && uRaca.bpNum) {
+    return uRaca.bpNum
   }
 
-  return false
+  return 0
 })
+
+/**
+ * 能否战斗所有次数
+ */
+const batchFightDisabled = (count: number) => count * 10 > uRacaNum.value
 
 /**
  * 能否升级
@@ -889,6 +894,7 @@ const onDeposit = (item: WalletAsset) => {
  */
 const onWithdraw = (item: GameAsset, payType: number) => {
   Object.assign(currentTradeInfo, item)
+  currentTradeInfo.count = Number(item.bpNum)
   currentTradeInfo.name = formatGameAssetNameByType(item.bpType)
   currentTradeInfo.payType = payType
   currentTradeInfo.type = 'withdraw'
@@ -909,6 +915,8 @@ const checkDepositOrderStatus = async (txHash: string) => {
     address: wallet.address,
     txHash,
   })
+
+  console.log({ code, status })
 
   if (code === 'SUCCESS' && status) {
     return undefined
