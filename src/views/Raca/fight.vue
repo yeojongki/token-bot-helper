@@ -315,7 +315,7 @@ const monsterColumns = [
     title: '能否升级',
     dataIndex: 'monsterUpdate',
     customRender({ record }: any) {
-      return record.exp > record.expMax ? '✅' : '❌'
+      return record.exp >= record.expMax ? '✅' : '❌'
     },
   },
   {
@@ -349,13 +349,13 @@ const monsterColumns = [
           >
             战斗所有次数
           </Button>
-          <Button
+          <async-button
             type="link"
-            disabled={batchFightDisabled(record.tear)}
-            onClick={() => updateMonster(record.id)}
+            disabled={record.exp < record.expMax}
+            api={async () => await updateMonster(record.id)}
           >
             升级
-          </Button>
+          </async-button>
         </>
       )
     },
@@ -617,7 +617,7 @@ const getGameAssets = async () => {
 /**
  * 获取我的元兽列表
  */
-const getSelfMonster = async () => {
+const getSelfMonsters = async () => {
   try {
     myMonsters.loading = true
     const {
@@ -749,8 +749,8 @@ const updateMonster = async (nftId: number) => {
       content: '升级成功',
     })
 
-    // 刷新列表
-    getBattleList()
+    // 刷新我的元兽列表
+    getSelfMonsters()
   } else {
     notification.error({
       message: '升级失败',
@@ -1294,7 +1294,7 @@ const getBalanceAll = () => {
 const initData = async () => {
   await login()
   getBalanceAll()
-  await getSelfMonster()
+  await getSelfMonsters()
 
   // 设置第一个元兽为当前对战元兽
   // await setBattleMetamon(myMonsters.list[0].id, false)
