@@ -1172,6 +1172,11 @@ const batchFightAll = async (metamonId: number, tear: number) => {
       duration: null,
       message: `挑战${tear}次, 成功${successCount}, 失败${tear - successCount}`,
     })
+
+    // 刷新我的元兽列表
+    getSelfMonsters()
+    // 刷新游戏背包资产
+    getGameAssets()
   } catch (error) {
     console.error(error)
   } finally {
