@@ -174,6 +174,7 @@ import {
   GameAsset,
   gameAssetPayTypeMap,
   getMinimumIdFormList,
+  guid,
   Monster,
   RequestResultCode,
   WalletAsset,
@@ -547,18 +548,17 @@ const login = async () => {
   }
 
   // 走网络请求
-  const signMessage = 'LogIn'
+  const signMessage = `LogIn-${guid()}`
   const msgKey = 'login'
   message.loading({
     key: msgKey,
     duration: 0,
     content: '正在登录中',
   })
+
+  let racaSign = ''
   if (!sign.value) {
-    const res = await wallet.signMessage(signMessage)
-    // 保存 sign key
-    setSign(res)
-    localStorage.setItem(RACA_SIGN_KEY, res)
+    racaSign = await wallet.signMessage(signMessage)
   }
 
   const { code, data } = await formPost<{
@@ -566,14 +566,19 @@ const login = async () => {
     data: string
   }>('/metamon/login', {
     address: account,
-    sign: sign.value,
+    sign: racaSign,
     msg: signMessage,
+    network: 1,
   })
 
   if (code === 'SUCCESS') {
     // 保存 token
     setToken(data)
     localStorage.setItem(RACA_TOKEN_KEY, data)
+
+    // 保存 sign key
+    setSign(racaSign)
+    localStorage.setItem(RACA_SIGN_KEY, racaSign)
 
     message.success({
       key: msgKey,
