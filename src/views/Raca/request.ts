@@ -1,4 +1,4 @@
-import { RACA_TOKEN_KEY } from '@/constants/storageKey'
+import { RACA_SIGN_KEY, RACA_TOKEN_KEY } from '@/constants/storageKey'
 import axios from 'axios'
 import qs from 'qs'
 
@@ -18,6 +18,7 @@ instance.interceptors.request.use(config => {
 instance.interceptors.response.use(res => {
   if (res.data.code === 'FAIL') {
     if (res.data.result === 401) {
+      localStorage.removeItem(RACA_SIGN_KEY)
       localStorage.removeItem(RACA_TOKEN_KEY)
       window.location.reload()
     }
