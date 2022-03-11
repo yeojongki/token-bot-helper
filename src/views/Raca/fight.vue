@@ -425,35 +425,35 @@ const gameAssets = reactive({
         }
 
         // 元兽蛋
-        if (bpType === 6) {
-          return (
-            <Button
-              type="primary"
-              disabled={bpNum <= 0}
-              onClick={() => onWithdraw(record, -5)}
-            >
-              提现
-            </Button>
-          )
-        }
+        // if (bpType === 6) {
+        //   return (
+        //     <Button
+        //       type="primary"
+        //       disabled={bpNum <= 0}
+        //       onClick={() => onWithdraw(record, -5)}
+        //     >
+        //       提现
+        //     </Button>
+        //   )
+        // }
 
         // uRACA
-        if (bpType === 5) {
-          return (
-            <>
-              <Button
-                type="primary"
-                disabled={tokenBalance.raca <= 0}
-                onClick={onRechargeURACA}
-              >
-                充值
-              </Button>
-              <Button type="primary" class="ml-10" onClick={approveURACA}>
-                授权
-              </Button>
-            </>
-          )
-        }
+        // if (bpType === 5) {
+        //   return (
+        //     <>
+        //       <Button
+        //         type="primary"
+        //         disabled={tokenBalance.raca <= 0}
+        //         onClick={onRechargeURACA}
+        //       >
+        //         充值
+        //       </Button>
+        //       <Button type="primary" class="ml-10" onClick={approveURACA}>
+        //         授权
+        //       </Button>
+        //     </>
+        //   )
+        // }
 
         return ''
       },
@@ -563,7 +563,7 @@ const login = async () => {
 
   const { code, data } = await formPost<{
     code: RequestResultCode
-    data: string
+    data: { accessToken: string }
   }>('/metamon/login', {
     address: account,
     sign: racaSign,
@@ -573,8 +573,8 @@ const login = async () => {
 
   if (code === 'SUCCESS') {
     // 保存 token
-    setToken(data)
-    localStorage.setItem(RACA_TOKEN_KEY, data)
+    setToken(data.accessToken)
+    localStorage.setItem(RACA_TOKEN_KEY, data.accessToken)
 
     // 保存 sign key
     setSign(racaSign)
@@ -982,9 +982,11 @@ const _getTradeOrder = async () => {
 }
 
 /**
+ * @deprecated
  * 充值或提现资产
  */
 const depositOrWithdraw = async () => {
+  return
   walletAssets.submitLoading = true
   const { payType, count, tokenIds = '', rartity = 1, type } = currentTradeInfo
   // 提现 or 充值
