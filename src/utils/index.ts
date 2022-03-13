@@ -276,3 +276,12 @@ export function execWithSleep<T = any>(fn: () => Promise<T>, timeout: number) {
     })
   })
 }
+
+/**
+ * 将科学计数法数字转为完整的数字
+ * @param num
+ * @returns
+ */
+export function toNonExponential(num: number) {
+  return num.toFixed(18).replace(/\.?0+$/, '')
+}

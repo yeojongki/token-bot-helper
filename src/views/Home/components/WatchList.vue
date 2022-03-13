@@ -23,7 +23,7 @@
 
   <draggable
     class="token-list"
-    @change="userStore.handleTokenSort"
+    @change="(userStore.handleTokenSort as any)"
     :list="userStore.userAddedTokens"
     item-key="address"
   >
@@ -67,6 +67,7 @@
                   >
                   <a-menu-item
                     divided
+                    :disabled="element.address === WBNB_TOKEN.address"
                     :command="{
                       name: Commond.DELETE,
                       chainId: element.chainId,
@@ -93,6 +94,7 @@ import AsyncButton from '@/components/AsyncButton/index.vue'
 import { TokenPoolType, TokenWithPrice, useTokensStore } from '@/store/tokens'
 import { useRef } from '@/hooks/useRef'
 import copyText from '@/utils/copyText'
+import { toNonExponential } from '@/utils'
 
 /**
  * dropdown 命令枚举
@@ -147,7 +149,7 @@ const formatTokenPrice = (
       break
   }
 
-  return String(actuallyPrice).slice(0, 12)
+  return String(toNonExponential(actuallyPrice))
 }
 
 /**

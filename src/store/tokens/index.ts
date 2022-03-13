@@ -126,7 +126,7 @@ export const useTokensStore = defineStore({
           userStore.userAddedTokens.forEach(
             ({ chainId, address, poolType, skipWatch }) => {
               if (
-                address === WBNB_TOKEN.address ||
+                // address === WBNB_TOKEN.address ||
                 address === USDT_TOKEN.address ||
                 address === BUSD_TOKEN.address
               ) {
