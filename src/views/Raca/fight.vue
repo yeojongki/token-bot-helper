@@ -561,9 +561,14 @@ const login = async () => {
     racaSign = await wallet.signMessage(signMessage)
   }
 
-  const { code, data } = await formPost<{
+  const {
+    code,
+    data,
+    message: resMsg,
+  } = await formPost<{
     code: RequestResultCode
     data: { accessToken: string }
+    message: string
   }>('/metamon/login', {
     address: account,
     sign: racaSign,
@@ -586,9 +591,14 @@ const login = async () => {
       content: '登录成功',
     })
   } else {
+    message.destroy()
     notification.error({
+      duration: null,
       message: '登录失败',
+      description: resMsg,
     })
+
+    return Promise.reject(resMsg)
   }
 }
 
